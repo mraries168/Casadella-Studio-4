@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, downloadAndShare, longDate, METHOD_LABEL, openWhatsApp, PAY_STATUS, rp, useFetch } from "@/src/api";
-import { adminInvoiceText, confirmText, invoiceText, rejectText, reminderText } from "@/src/wa";
+import { adminInvoiceText, balanceText, confirmText, invoiceText, rejectText, reminderText } from "@/src/wa";
 import { useAuth } from "@/src/auth";
 import { WorkflowCard } from "@/src/workflow";
 import { makeStyles, space, radius } from "@/src/theme";
@@ -89,10 +89,10 @@ export default function BookingDetail() {
     }
   };
 
-  const sendWa = async (kind: "confirm" | "receipt" | "reminder") => {
+  const sendWa = async (kind: "confirm" | "receipt" | "reminder" | "balance") => {
     setErr(null);
     const studio = settings.data?.studio_name || "Casadella Photo Studio";
-    const text = kind === "confirm" ? confirmText(b, studio) : kind === "reminder" ? reminderText(b, studio) : invoiceText(b, studio);
+    const text = kind === "confirm" ? confirmText(b, studio) : kind === "reminder" ? reminderText(b, studio) : kind === "balance" ? balanceText(b, studio) : invoiceText(b, studio);
     try {
       await openWhatsApp(b.client_phone, text);
     } catch (e: any) {
@@ -143,6 +143,9 @@ export default function BookingDetail() {
           <Button testID="wa-receipt-button" title="WA Invoice" icon="receipt-outline" variant="secondary" style={{ flex: 1 }} onPress={() => sendWa("receipt")} />
           <Button testID="invoice-pdf-button" title="Invoice PDF" icon="document-text-outline" variant="secondary" style={{ flex: 1 }} loading={pdfBusy} onPress={shareInvoice} />
         </View>
+        {!pending && !cancelled && b.payment_status !== "lunas" && (
+          <Button testID="wa-balance-button" title={`Tagih Pelunasan ${rp(b.price - (b.paid_total || 0))}`} icon="logo-whatsapp" variant="secondary" onPress={() => sendWa("balance")} />
+        )}
         {(!isAdmin || pending) && <ErrorText text={!open ? err : null} />}
         <Card testID="booking-info-card" style={{ gap: space.md }}>
           <View style={s.between}>

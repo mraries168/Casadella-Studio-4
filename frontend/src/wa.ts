@@ -17,6 +17,9 @@ export const reminderText = (b: any, studio: string) =>
     remainingOf(b) > 0 ? `Sisa pembayaran: ${rp(remainingOf(b))}\n` : ""
   }\nMohon datang 10 menit lebih awal. Sampai jumpa!`;
 
+export const balanceText = (b: any, studio: string) =>
+  `Halo ${b.client_name},\n\nTerima kasih sudah melakukan sesi foto di ${studio}.\n\n${detail(b)}\nTotal: ${rp(b.price)}\nSudah dibayar: ${rp(b.paid_total)}\n*Sisa pelunasan: ${rp(remainingOf(b))}*\n\nMohon segera melakukan pelunasan (tunai, transfer, kartu, atau QRIS) agar foto dapat kami proses dan kirimkan. Terima kasih!`;
+
 export const rejectText = (b: any, studio: string) =>
   `Halo ${b.client_name},\n\nMohon maaf, booking online Anda di ${studio} untuk ${longDate(b.date)} jam ${b.start_time} (${b.package_name}) belum dapat kami terima. Silakan pilih jadwal lain atau hubungi kami. Terima kasih!`;
 

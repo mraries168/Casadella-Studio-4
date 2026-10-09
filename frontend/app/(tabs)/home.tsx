@@ -5,7 +5,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { addDays, api, hhmm, longDate, openWhatsApp, PAY_STATUS, ROLE_LABEL, rp, today, useFetch } from "@/src/api";
-import { reminderText } from "@/src/wa";
+import { balanceText, reminderText } from "@/src/wa";
 import { useAuth } from "@/src/auth";
 import { usesNativeTabs } from "@/src/navigation";
 import { useAttendanceLocation } from "@/src/location";
@@ -45,6 +45,17 @@ export default function Home() {
   const [err, setErr] = useState<string | null>(null);
   const loc = useAttendanceLocation();
   const pending = useFetch<any[]>(can("booking") ? "/bookings?status=pending" : null);
+  const unpaid = useFetch<any[]>(can("booking") ? "/bookings/unpaid-finished" : null);
+  const [billed, setBilled] = useState<Record<string, boolean>>({});
+  const bill = async (b: any) => {
+    setErr(null);
+    try {
+      await openWhatsApp(b.client_phone, balanceText(b, settings.data?.studio_name || "Casadella Photo Studio"));
+      setBilled({ ...billed, [b.id]: true });
+    } catch (e: any) {
+      setErr(`${b.client_name}: ${e.message}`);
+    }
+  };
 
   const clock = async (kind: "in" | "out") => {
     setBusy(true);
@@ -63,7 +74,7 @@ export default function Home() {
       setBusy(false);
     }
   };
-  const refresh = () => { att.reload(); bookings.reload(); rep.reload(); tmr.reload(); pending.reload(); checklist.reload(); wf.reload(); late.reload(); };
+  const refresh = () => { att.reload(); bookings.reload(); rep.reload(); tmr.reload(); pending.reload(); unpaid.reload(); checklist.reload(); wf.reload(); late.reload(); };
   const activeStages = (wf.data?.stages || []).filter((x: any) => x.count > 0 && x.key !== "completed");
   const active = (bookings.data || []).filter((b) => b.status !== "cancelled");
   const waiting = pending.data || [];
@@ -176,6 +187,27 @@ export default function Home() {
                   <Text style={s.meta}>{b.package_name}</Text>
                 </View>
                 <Badge label="Menunggu" tone="warning" />
+              </Card>
+            ))}
+          </View>
+        )}
+
+        {can("booking") && (unpaid.data || []).length > 0 && (
+          <View style={{ gap: space.sm }}>
+            <SectionTitle>Tagih Pelunasan ({unpaid.data!.length})</SectionTitle>
+            {unpaid.data!.map((b) => (
+              <Card key={b.id} testID={`unpaid-${b.id}`} onPress={() => router.push(`/booking/${b.id}`)} style={s.row}>
+                <View style={s.time}>
+                  <Text style={s.timeText}>{b.end_time}</Text>
+                  <Text style={s.timeEnd}>{b.date.slice(8)}/{b.date.slice(5, 7)}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={s.client}>{b.client_name}</Text>
+                  <Text style={s.meta} testID={`unpaid-remaining-${b.id}`}>Sisa {rp(b.price - (b.paid_total || 0))}</Text>
+                </View>
+                <Pressable testID={`unpaid-wa-${b.id}`} onPress={() => bill(b)} style={[s.waBtn, billed[b.id] && { backgroundColor: colors.brandSecondary }]} hitSlop={6}>
+                  <Ionicons name={billed[b.id] ? "checkmark" : "logo-whatsapp"} size={20} color={colors.onBrandPrimary} />
+                </Pressable>
               </Card>
             ))}
           </View>

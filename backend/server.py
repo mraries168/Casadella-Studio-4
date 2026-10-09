@@ -394,6 +394,15 @@ async def list_bookings(date: Optional[str] = None, status: Optional[str] = None
     return [wf_view(d) for d in await db.bookings.find(q).sort([("date", 1), ("start_time", 1)]).to_list(1000)]
 
 
+@api.get("/bookings/unpaid-finished")
+async def unpaid_finished(_=Depends(current_user)):
+    n = datetime.now(timezone.utc) + timedelta(hours=7)
+    d, t = n.strftime("%Y-%m-%d"), n.strftime("%H:%M")
+    q = {"status": "confirmed", "payment_status": {"$ne": "lunas"},
+         "$or": [{"date": {"$lt": d}}, {"date": d, "end_time": {"$lte": t}}]}
+    return [wf_view(b) for b in await db.bookings.find(q).sort([("date", -1), ("start_time", -1)]).to_list(200)]
+
+
 @api.get("/bookings/{bid}")
 async def get_booking(bid: str, _=Depends(current_user)):
     b = await db.bookings.find_one({"_id": oid(bid)})

@@ -68,3 +68,8 @@ User choices: PIN login, IDR, record-only payments (cash/transfer/card/QRIS), cl
 ## Backlog
 - Tahap 2: DP online di halaman booking, WhatsApp otomatis
 - Tahap 3: Bahasa Inggris, galeri hasil foto klien
+
+## Iteration: Tagih Pelunasan (2026-06)
+- GET /api/bookings/unpaid-finished: confirmed bookings whose session ended (WIB +7, same as existing logic) and not yet lunas
+- Home "Tagih Pelunasan" list with one-tap WhatsApp balance request (admin presses send); booking detail "Tagih Pelunasan Rp X" button
+- No online payment (user cancelled); payments remain record-only
