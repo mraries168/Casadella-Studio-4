@@ -996,7 +996,61 @@ async def build_clients():
             c["last_visit"], c["last_package"] = b["date"], b["package_name"]
         elif not c["next_booking"]:
             c["next_booking"] = b["date"]
-    return sorted(m.values(), key=lambda c: c["last_visit"] or c["next_booking"] or "", reverse=True), bs
+    for p in await db.clients.find({}, {"_id": 0}).to_list(50000):
+        c = m.setdefault(p["key"], {"key": p["key"], "total_bookings": 0, "total_spent": 0, "total_paid": 0,
+                                    "last_visit": None, "last_package": None, "next_booking": None})
+        c.update({f: p.get(f, "") for f in CLIENT_FIELDS})
+        c["manual"] = True
+    return sorted(m.values(), key=lambda c: c["last_visit"] or c["next_booking"] or c.get("created_at") or "", reverse=True), bs
+
+
+CLIENT_FIELDS = ["name", "phone", "instagram", "address", "notes", "created_at"]
+
+
+class ClientIn(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    phone: str = Field(default="", max_length=20)
+    instagram: str = Field(default="", max_length=60)
+    address: str = Field(default="", max_length=200)
+    notes: str = Field(default="", max_length=500)
+
+
+async def client_exists(key: str) -> bool:
+    out, _bs = await build_clients()
+    return any(c["key"] == key for c in out)
+
+
+@api.post("/clients")
+async def create_client(body: ClientIn, u=Depends(ADMIN)):
+    data = body.model_dump() | {"name": body.name.strip(), "phone": body.phone.strip()}
+    key = client_key({"client_phone": data["phone"], "client_name": data["name"]})
+    if await client_exists(key):
+        raise HTTPException(409, "Klien dengan nomor/nama ini sudah ada")
+    await db.clients.insert_one(data | {"key": key, "created_at": now_iso(), "created_by": u["name"]})
+    await audit(u["name"], "client", "create", key, f"Klien baru {data['name']} ({data['phone'] or 'tanpa nomor'})")
+    return await client_detail(key)
+
+
+@api.put("/clients/{key}")
+async def update_client(key: str, body: ClientIn, u=Depends(ADMIN)):
+    out, bs = await build_clients()
+    old = next((c for c in out if c["key"] == key), None)
+    if not old:
+        raise HTTPException(404, "Klien tidak ditemukan")
+    data = body.model_dump() | {"name": body.name.strip(), "phone": body.phone.strip()}
+    new_key = client_key({"client_phone": data["phone"], "client_name": data["name"]})
+    if new_key != key and any(c["key"] == new_key for c in out):
+        raise HTTPException(409, "Nomor/nama ini sudah dipakai klien lain")
+    ids = [b["_id"] for b in bs if client_key(b) == key]
+    if ids:
+        await db.bookings.update_many({"_id": {"$in": ids}}, {"$set": {"client_name": data["name"], "client_phone": data["phone"]}})
+    prev = await db.clients.find_one_and_delete({"key": key}) or {}
+    await db.clients.insert_one(data | {"key": new_key, "created_at": prev.get("created_at") or now_iso(),
+                                        "created_by": prev.get("created_by") or u["name"], "updated_by": u["name"], "updated_at": now_iso()})
+    labels = {"name": "Nama", "phone": "No. WhatsApp", "instagram": "Instagram", "address": "Alamat", "notes": "Catatan"}
+    ch = [{"field": lbl, "from": old.get(f) or "", "to": data[f]} for f, lbl in labels.items() if (old.get(f) or "") != data[f]]
+    await audit(u["name"], "client", "update", new_key, f"Ubah data klien {data['name']}", ch)
+    return await client_detail(new_key)
 
 
 @api.get("/clients")
@@ -1111,7 +1165,7 @@ async def payslip(uid: str, month: str, u=Depends(SUPER)):
 
 # ---------- audit log (super admin) ----------
 @api.get("/audit")
-async def list_audit(entity: Optional[Literal["booking", "payment", "package"]] = None, limit: int = Query(200, le=1000), _=Depends(SUPER)):
+async def list_audit(entity: Optional[Literal["booking", "payment", "package", "client"]] = None, limit: int = Query(200, le=1000), _=Depends(SUPER)):
     q = {"entity": entity} if entity else {}
     return [ser(d) for d in await db.audit_logs.find(q).sort("created_at", -1).to_list(limit)]
 

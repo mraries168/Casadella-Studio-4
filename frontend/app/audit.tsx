@@ -11,6 +11,7 @@ const FILTERS = [
   { key: "booking", label: "Booking" },
   { key: "payment", label: "Pembayaran" },
   { key: "package", label: "Harga Paket" },
+  { key: "client", label: "Klien" },
 ];
 const ACTION: Record<string, [string, "brand" | "success" | "warning" | "error" | "muted"]> = {
   create: ["Baru", "success"], update: ["Ubah", "brand"], delete: ["Hapus", "error"], cancel: ["Batal", "error"],

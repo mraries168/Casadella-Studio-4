@@ -15,7 +15,7 @@ export default function Clients() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { can } = useAuth();
+  const { can, isAdmin } = useAuth();
   const allowed = can("booking") || can("reports");
   const { data, loading, error } = useFetch<any[]>(allowed ? "/clients" : null);
   const [q, setQ] = useState("");
@@ -47,6 +47,7 @@ export default function Clients() {
           <TextInput testID="clients-search-input" value={q} onChangeText={setQ} placeholder="Cari nama atau nomor" placeholderTextColor={colors.muted} style={s.searchInput} />
         </View>
         <View style={{ flexDirection: "row", gap: space.sm }}>
+          {isAdmin && <Button testID="clients-add-button" title="Tambah" icon="person-add-outline" style={{ flex: 1 }} onPress={() => router.push("/client-form")} />}
           <Button testID="clients-export-pdf" title="PDF" icon="document-text-outline" variant="ghost" style={{ flex: 1 }} loading={exporting === "pdf"} onPress={() => doExport("pdf")} />
           <Button testID="clients-export-xlsx" title="Excel" icon="grid-outline" variant="ghost" style={{ flex: 1 }} loading={exporting === "xlsx"} onPress={() => doExport("xlsx")} />
         </View>
@@ -63,7 +64,7 @@ export default function Clients() {
             </View>
             <Text style={s.meta}>{c.phone || "Tanpa nomor"}</Text>
             <Text style={s.meta}>
-              {c.last_visit ? `Terakhir: ${longDate(c.last_visit)} · ${c.last_package}` : `Booking mendatang: ${c.next_booking ? longDate(c.next_booking) : "-"}`}
+              {c.last_visit ? `Terakhir: ${longDate(c.last_visit)} · ${c.last_package}` : c.next_booking ? `Booking mendatang: ${longDate(c.next_booking)}` : "Belum pernah booking"}
             </Text>
             <Text style={s.spent}>Total belanja {rp(c.total_spent)}</Text>
           </Card>
