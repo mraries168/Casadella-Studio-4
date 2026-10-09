@@ -104,7 +104,12 @@ export const rp = (n: number = 0) =>
 
 const pad = (n: number) => String(n).padStart(2, "0");
 export const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-export const today = () => ymd(new Date());
+// Studio local time (WITA, UTC+8) regardless of device timezone
+const studio = (t: number) => new Date(t + 8 * 3600000);
+export const today = () => {
+  const d = studio(Date.now());
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+};
 export const parseYmd = (s: string) => {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
@@ -123,8 +128,12 @@ export const longDate = (s: string) => {
 };
 export const hhmm = (iso?: string | null) => {
   if (!iso) return "--:--";
-  const d = new Date(iso);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const d = studio(new Date(iso).getTime());
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+};
+export const dmyhm = (iso: string) => {
+  const d = studio(new Date(iso).getTime());
+  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 };
 
 export const ROLE_LABEL: Record<string, string> = {

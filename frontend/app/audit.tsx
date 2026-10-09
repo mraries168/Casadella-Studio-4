@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { FlatList, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { rp, useFetch } from "@/src/api";
+import { dmyhm, rp, useFetch } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { makeStyles, space } from "@/src/theme";
 import { Badge, Card, Chip, Empty, ErrorText, Header, Loading } from "@/src/ui";
@@ -17,11 +17,7 @@ const ACTION: Record<string, [string, "brand" | "success" | "warning" | "error" 
   approve: ["Setujui", "success"], reject: ["Tolak", "warning"],
 };
 const fmt = (v: any, field: string) => (v == null || v === "" ? "-" : field === "Harga" ? rp(Number(v)) : typeof v === "boolean" ? (v ? "Ya" : "Tidak") : String(v));
-const when = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
+const when = dmyhm;
 
 export default function Audit() {
   const s = useStyles();

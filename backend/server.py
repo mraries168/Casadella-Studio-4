@@ -25,6 +25,7 @@ load_dotenv(ROOT_DIR / '.env')
 
 client = AsyncIOMotorClient(os.environ['MONGO_URL'])
 db = client[os.environ['DB_NAME']]
+LOCAL_TZ = timedelta(hours=8)  # WITA (Kupang)
 JWT_SECRET = os.environ['JWT_SECRET']
 ALGO = "HS256"
 TOKEN_HOURS = 12
@@ -396,7 +397,7 @@ async def list_bookings(date: Optional[str] = None, status: Optional[str] = None
 
 @api.get("/bookings/unpaid-finished")
 async def unpaid_finished(_=Depends(current_user)):
-    n = datetime.now(timezone.utc) + timedelta(hours=7)
+    n = datetime.now(timezone.utc) + LOCAL_TZ
     d, t = n.strftime("%Y-%m-%d"), n.strftime("%H:%M")
     q = {"status": "confirmed", "payment_status": {"$ne": "lunas"},
          "$or": [{"date": {"$lt": d}}, {"date": d, "end_time": {"$lte": t}}]}
@@ -464,6 +465,15 @@ async def approve_booking(bid: str, u=Depends(BOOK)):
                                                      "$push": {"stage_history": stage_entry("order_received", u["name"])}})
     await audit(u["name"], "booking", "approve", bid, f"Setujui booking online {b['client_name']} · {b['date']} {b['start_time']}")
     return ser(await db.bookings.find_one({"_id": b["_id"]}))
+
+
+@api.post("/bookings/{bid}/balance-requested")
+async def mark_balance_requested(bid: str, u=Depends(BOOK)):
+    upd = {"balance_requested_at": now_iso(), "balance_requested_by": u["name"]}
+    r = await db.bookings.update_one({"_id": oid(bid)}, {"$set": upd})
+    if not r.matched_count:
+        raise HTTPException(404, "Booking tidak ditemukan")
+    return upd
 
 
 @api.post("/bookings/{bid}/reject")
@@ -571,7 +581,7 @@ async def report(period: Literal["daily", "monthly", "yearly"], date: str, _=Dep
 
 # ---------- attendance ----------
 def local_date():
-    return (datetime.now(timezone.utc) + timedelta(hours=7)).strftime("%Y-%m-%d")
+    return (datetime.now(timezone.utc) + LOCAL_TZ).strftime("%Y-%m-%d")
 
 
 @api.get("/attendance/today")
@@ -644,7 +654,7 @@ async def att_list(date: Optional[str] = None, u=Depends(current_user)):
 def local_min(iso: Optional[str]) -> Optional[int]:
     if not iso:
         return None
-    d = datetime.fromisoformat(iso) + timedelta(hours=7)
+    d = datetime.fromisoformat(iso) + LOCAL_TZ
     return d.hour * 60 + d.minute
 
 
@@ -1143,7 +1153,7 @@ class PublicBookingIn(BaseModel):
 
 
 def now_local_min():
-    n = datetime.now(timezone.utc) + timedelta(hours=7)
+    n = datetime.now(timezone.utc) + LOCAL_TZ
     return n.hour * 60 + n.minute
 
 

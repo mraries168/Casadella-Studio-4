@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, downloadAndShare, longDate, METHOD_LABEL, openWhatsApp, PAY_STATUS, rp, useFetch } from "@/src/api";
+import { api, dmyhm, downloadAndShare, longDate, METHOD_LABEL, openWhatsApp, PAY_STATUS, rp, useFetch } from "@/src/api";
 import { adminInvoiceText, balanceText, confirmText, invoiceText, rejectText, reminderText } from "@/src/wa";
 import { useAuth } from "@/src/auth";
 import { WorkflowCard } from "@/src/workflow";
@@ -95,6 +95,7 @@ export default function BookingDetail() {
     const text = kind === "confirm" ? confirmText(b, studio) : kind === "reminder" ? reminderText(b, studio) : kind === "balance" ? balanceText(b, studio) : invoiceText(b, studio);
     try {
       await openWhatsApp(b.client_phone, text);
+      if (kind === "balance") setData({ ...b, ...(await api(`/bookings/${id}/balance-requested`, { method: "POST" })) });
     } catch (e: any) {
       setErr(e.message);
     }
@@ -143,8 +144,11 @@ export default function BookingDetail() {
           <Button testID="wa-receipt-button" title="WA Invoice" icon="receipt-outline" variant="secondary" style={{ flex: 1 }} onPress={() => sendWa("receipt")} />
           <Button testID="invoice-pdf-button" title="Invoice PDF" icon="document-text-outline" variant="secondary" style={{ flex: 1 }} loading={pdfBusy} onPress={shareInvoice} />
         </View>
-        {!pending && !cancelled && b.payment_status !== "lunas" && (
-          <Button testID="wa-balance-button" title={`Tagih Pelunasan ${rp(b.price - (b.paid_total || 0))}`} icon="logo-whatsapp" variant="secondary" onPress={() => sendWa("balance")} />
+        {isAdmin && !pending && !cancelled && b.payment_status !== "lunas" && (
+          <View style={{ gap: 4 }}>
+            <Button testID="wa-balance-button" title={b.balance_requested_at ? `Tagih Ulang ${rp(remaining)}` : `Tagih Pelunasan ${rp(remaining)}`} icon="logo-whatsapp" variant="secondary" onPress={() => sendWa("balance")} />
+            {b.balance_requested_at && <Text style={s.billed} testID="balance-billed-text">Sudah ditagih {dmyhm(b.balance_requested_at)} oleh {b.balance_requested_by}</Text>}
+          </View>
         )}
         {(!isAdmin || pending) && <ErrorText text={!open ? err : null} />}
         <Card testID="booking-info-card" style={{ gap: space.md }}>
@@ -238,6 +242,7 @@ function Info({ label, value, light }: { label: string; value: string; light?: b
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surfaceSecondary },
+  billed: { fontSize: 12, textAlign: "center", color: c.success, fontWeight: "700" },
   between: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: space.md },
   pkg: { fontSize: 17, fontWeight: "800", color: c.brandPrimary, flex: 1 },
   infoLabel: { fontSize: 13, color: c.muted },

@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
-import { addDays, api, hhmm, longDate, openWhatsApp, PAY_STATUS, ROLE_LABEL, rp, today, useFetch } from "@/src/api";
+import { addDays, api, dmyhm, hhmm, longDate, openWhatsApp, PAY_STATUS, ROLE_LABEL, rp, today, useFetch } from "@/src/api";
 import { balanceText, reminderText } from "@/src/wa";
 import { useAuth } from "@/src/auth";
 import { usesNativeTabs } from "@/src/navigation";
@@ -46,16 +46,18 @@ export default function Home() {
   const loc = useAttendanceLocation();
   const pending = useFetch<any[]>(can("booking") ? "/bookings?status=pending" : null);
   const unpaid = useFetch<any[]>(can("booking") ? "/bookings/unpaid-finished" : null);
-  const [billed, setBilled] = useState<Record<string, boolean>>({});
+  const [billed, setBilled] = useState<Record<string, string>>({});
   const bill = async (b: any) => {
     setErr(null);
     try {
       await openWhatsApp(b.client_phone, balanceText(b, settings.data?.studio_name || "Casadella Photo Studio"));
-      setBilled({ ...billed, [b.id]: true });
+      const r = await api(`/bookings/${b.id}/balance-requested`, { method: "POST" });
+      setBilled({ ...billed, [b.id]: r.balance_requested_at });
     } catch (e: any) {
       setErr(`${b.client_name}: ${e.message}`);
     }
   };
+  const [lateOpen, setLateOpen] = useState(false);
 
   const clock = async (kind: "in" | "out") => {
     setBusy(true);
@@ -143,8 +145,17 @@ export default function Home() {
             <SectionTitle>Staff Terlambat Hari Ini ({late.data.items.length})</SectionTitle>
             {late.data.items.length === 0 ? (
               <Card testID="home-late-empty"><Text style={s.meta}>Semua staff tepat waktu (jam masuk {late.data.work_start}).</Text></Card>
+            ) : late.data.items.length > 1 && !lateOpen ? (
+              <Card testID="home-late-folder" onPress={() => setLateOpen(true)} style={s.row}>
+                <Ionicons name="folder-outline" size={22} color={colors.brandPrimary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.client}>{late.data.items.length} staff terlambat / belum absen</Text>
+                  <Text style={s.meta} numberOfLines={1}>{late.data.items.map((x: any) => x.name).join(", ")}</Text>
+                </View>
+                <Ionicons name="chevron-down" size={20} color={colors.muted} />
+              </Card>
             ) : late.data.items.map((x: any) => (
-              <Card key={x.user_id} testID={`home-late-${x.user_id}`} style={s.row}>
+              <Card key={x.user_id} testID={`home-late-${x.user_id}`} onPress={late.data.items.length > 1 ? () => setLateOpen(false) : undefined} style={s.row}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.client}>{x.name}</Text>
                   <Text style={s.meta}>{ROLE_LABEL[x.sub_role]} · {x.status === "late" ? `masuk ${hhmm(x.clock_in)}` : "belum absen"}</Text>
@@ -195,7 +206,9 @@ export default function Home() {
         {can("booking") && (unpaid.data || []).length > 0 && (
           <View style={{ gap: space.sm }}>
             <SectionTitle>Tagih Pelunasan ({unpaid.data!.length})</SectionTitle>
-            {unpaid.data!.map((b) => (
+            {unpaid.data!.map((b) => {
+              const at = billed[b.id] || b.balance_requested_at;
+              return (
               <Card key={b.id} testID={`unpaid-${b.id}`} onPress={() => router.push(`/booking/${b.id}`)} style={s.row}>
                 <View style={s.time}>
                   <Text style={s.timeText}>{b.end_time}</Text>
@@ -204,12 +217,14 @@ export default function Home() {
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={s.client}>{b.client_name}</Text>
                   <Text style={s.meta} testID={`unpaid-remaining-${b.id}`}>Sisa {rp(b.price - (b.paid_total || 0))}</Text>
+                  {at && <Text style={s.stageText} testID={`unpaid-billed-${b.id}`}>Sudah ditagih {dmyhm(at)}</Text>}
                 </View>
-                <Pressable testID={`unpaid-wa-${b.id}`} onPress={() => bill(b)} style={[s.waBtn, billed[b.id] && { backgroundColor: colors.brandSecondary }]} hitSlop={6}>
-                  <Ionicons name={billed[b.id] ? "checkmark" : "logo-whatsapp"} size={20} color={colors.onBrandPrimary} />
+                <Pressable testID={`unpaid-wa-${b.id}`} onPress={() => bill(b)} style={[s.waBtn, at && { backgroundColor: colors.brandSecondary }]} hitSlop={6}>
+                  <Ionicons name={at ? "checkmark" : "logo-whatsapp"} size={20} color={colors.onBrandPrimary} />
                 </Pressable>
               </Card>
-            ))}
+              );
+            })}
           </View>
         )}
 
