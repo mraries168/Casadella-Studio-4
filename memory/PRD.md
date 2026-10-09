@@ -83,3 +83,7 @@ User choices: PIN login, IDR, record-only payments (cash/transfer/card/QRIS), cl
 ## Iteration: Checklist minimum targets (2026-06)
 - Daily task targets are now MINIMUMS: every task uses +1 and keeps counting after the target (e.g. Input booking = per client, Follow up klien min 10, can exceed)
 - Checklist report shows count/min target; task template labels updated
+
+## Iteration: Auto count bookings (2026-06)
+- Template "Input booking harian" flagged auto="booking" (startup migration); POST /api/bookings by an admin auto +1 that admin's task for today; manual +1 disabled (400) for auto tasks
+- Not counted: Super Admin bookings, online-booking approvals; cancelling does not decrement

@@ -422,6 +422,7 @@ async def create_booking(body: BookingIn, u=Depends(BOOK)):
     doc["_id"] = r.inserted_id
     await audit(u["name"], "booking", "create", str(r.inserted_id),
                 f"Booking baru {doc['client_name']} · {doc['date']} {doc['start_time']} · {doc['package_name']}")
+    await count_auto_task(u, "booking")
     return ser(doc)
 
 
@@ -1446,7 +1447,7 @@ async def tasks_for(uid: str, role: Optional[str], d: str) -> list:
     out = []
     for t in tpls:
         lg = logs.get(str(t["_id"]), {})
-        out.append({"template_id": str(t["_id"]), "title": t["title"], "target": t["target"],
+        out.append({"template_id": str(t["_id"]), "title": t["title"], "target": t["target"], "auto": t.get("auto"),
                     "count": lg.get("count", 0), "done": lg.get("done", False), "done_at": lg.get("done_at")})
     return out
 
@@ -1460,10 +1461,12 @@ async def checklist_today(u=Depends(current_user)):
     return {"date": d, "tasks": tasks, "jobs": jobs, "completed": done, "total": len(tasks) + len(jobs)}
 
 
-async def bump_task(u, tid: str, complete: bool):
+async def bump_task(u, tid: str, complete: bool, auto: bool = False):
     t = await db.task_templates.find_one({"_id": oid(tid), "active": True})
     if not t or t["role"] != task_role(u["sub_role"]):
         raise HTTPException(404, "Tugas tidak ditemukan")
+    if t.get("auto") and not auto:
+        raise HTTPException(400, "Tugas ini dihitung otomatis dari booking baru")
     d, uid = local_date(), str(u["_id"])
     lg = await db.task_logs.find_one({"user_id": uid, "date": d, "template_id": tid}) or {}
     if complete and lg.get("done"):
@@ -1484,6 +1487,14 @@ async def bump_task(u, tid: str, complete: bool):
 @api.post("/checklist/{tid}/increment")
 async def checklist_inc(tid: str, u=Depends(current_user)):
     return await bump_task(u, tid, False)
+
+
+async def count_auto_task(u, kind: str):
+    role = task_role(u["sub_role"])
+    if not role:
+        return
+    for t in await db.task_templates.find({"role": role, "active": True, "auto": kind}).to_list(20):
+        await bump_task(u, str(t["_id"]), False, auto=True)
 
 
 @api.post("/checklist/{tid}/complete")
@@ -1540,6 +1551,7 @@ async def seed_tasks():
     if await db.task_templates.count_documents({}) == 0:
         await db.task_templates.insert_many([{"title": t, "role": "admin", "target": n, "active": True, "order": i, "created_at": now_iso()}
                                              for i, (t, n) in enumerate(DEFAULT_TASKS)])
+    await db.task_templates.update_many({"title": "Input booking harian", "role": "admin", "auto": {"$exists": False}}, {"$set": {"auto": "booking"}})
 
 
 @app.on_event("startup")

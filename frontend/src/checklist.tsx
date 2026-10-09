@@ -51,8 +51,9 @@ export function DailyTasks({ data, setData, reload }: { data: any; setData: (d: 
             <Text style={s.meta} testID={`task-count-${t.template_id}`}>
               {t.done ? `${t.count} tercatat · target min. ${t.target} tercapai` : `${t.count}/${t.target} · minimal ${t.target}, boleh lebih`}
             </Text>
+            {t.auto === "booking" && <Text style={s.auto} testID={`task-auto-${t.template_id}`}>Otomatis +1 setiap booking baru dibuat</Text>}
           </View>
-          <Button testID={`task-increment-${t.template_id}`} title="+1" variant={t.done ? "secondary" : "primary"} style={s.smallBtn} loading={busy === t.template_id} disabled={!!busy} onPress={() => run(t.template_id, `/checklist/${t.template_id}/increment`)} />
+          {!t.auto && <Button testID={`task-increment-${t.template_id}`} title="+1" variant={t.done ? "secondary" : "primary"} style={s.smallBtn} loading={busy === t.template_id} disabled={!!busy} onPress={() => run(t.template_id, `/checklist/${t.template_id}/increment`)} />}
         </View>
       ))}
 
@@ -94,6 +95,7 @@ const useStyles = makeStyles((c) => ({
   titleDone: { textDecorationLine: "line-through", color: c.muted },
   meta: { fontSize: 12, color: c.muted, marginTop: 2 },
   hint: { fontSize: 12, color: c.warning, fontWeight: "600" },
+  auto: { fontSize: 12, color: c.brandSecondary, fontWeight: "700", marginTop: 2 },
   smallBtn: { minHeight: 40, paddingHorizontal: space.md },
   job: { backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, padding: space.md, gap: space.xs },
 }));

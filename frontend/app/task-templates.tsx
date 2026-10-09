@@ -62,7 +62,7 @@ export default function TaskTemplates() {
           <View key={t.id} style={s.row} testID={`template-${t.id}`}>
             <View style={{ flex: 1 }}>
               <Text style={s.title}>{t.title}</Text>
-              <Text style={s.meta}>Minimal {t.target}x per hari, boleh lebih</Text>
+              <Text style={s.meta}>Minimal {t.target}x per hari, boleh lebih{t.auto === "booking" ? " · otomatis dari booking baru" : ""}</Text>
             </View>
             {confirm === t.id ? (
               <View style={{ flexDirection: "row", gap: space.sm }}>
