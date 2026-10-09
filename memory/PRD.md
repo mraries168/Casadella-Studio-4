@@ -59,3 +59,12 @@ User choices: PIN login, IDR, record-only payments (cash/transfer/card/QRIS), cl
 ## Backlog
 - P1: Automatic (background) WhatsApp sending via WhatsApp Business API; online DP payment on booking page
 - P2: English toggle, shadow* → boxShadow cleanup
+
+## Re-import ke environment baru (2026-06)
+- Repo main diimpor apa adanya; env backend dilengkapi (JWT_SECRET, EMERGENT_LLM_KEY, SEED_SUPERADMIN_PIN=123456), frontend EXPO_PUBLIC_BACKEND_URL
+- Dependensi backend openpyxl/reportlab/pillow dipasang; frontend Expo di-install ulang (yarn), start di port 3000
+- Bundle ID/package baru: com.emergent.casadellastudio.c442b0
+- Test iteration_9: backend 22/22 + 10 curl lolos, alur frontend Super Admin lolos
+## Backlog
+- Tahap 2: DP online di halaman booking, WhatsApp otomatis
+- Tahap 3: Bahasa Inggris, galeri hasil foto klien
