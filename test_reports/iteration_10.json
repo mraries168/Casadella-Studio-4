@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 10 verified three new features: (1) late-staff folder collapsing on Home, (2) 'Tagih Pelunasan' mark-billed flow with persistence, and (3) WITA (UTC+8) timezone consistency. Backend: 9/9 pytest in /app/backend/tests/test_iteration10.py pass — /api/public/info today == WITA today, /api/attendance/late-today returns {work_start, items[{user_id,name,sub_role,status,clock_in,late_minutes}]} and 403 for staff, /api/bookings/unpaid-finished returns only confirmed non-lunas bookings whose session ended in WITA (date<today or date==today with end_time<=now), /api/bookings/{id}/balance-requested is 403 for staff, 404 for non-existent valid ObjectId, 404 for malformed id, and for admin returns {balance_requested_at, balance_requested_by:name} with persistence verified via GET /bookings/{id} and inclusion in unpaid-finished. Frontend (Expo web, 390x844 mobile, Super Admin): login ok, home-greeting 'Halo, Super Admin'; home-late-folder shows '4 staff terlambat / belum absen' with Admin 1, Admin 2, Budi (Editor), Rina (Fotografer); tapping expands to 4 individual home-late-{id} cards; tapping an individual collapses back to folder. Unpaid section displays TagihKlienSeed card with Sisa Rp 150.000; tapping unpaid-wa-{id} opens api.whatsapp.com/send?phone=...&text=Halo+TagihKlienSeed..., immediately shows unpaid-billed-{id} 'Sudah ditagih 09/10/2026 12:00' (WITA formatted), and the mark PERSISTS after full page reload. Booking detail /booking/{id} shows wa-balance-button 'Tagih Ulang Rp 150.000' and balance-billed-text 'Sudah ditagih 09/10/2026 12:00 oleh Super Admin'. Timezone: hhmm()/dmyhm() in src/api.ts correctly apply +8h offset regardless of browser TZ (verified via rendered '12:00' at the time backend recorded UTC 04:00). Backend local_date/now_local_min use LOCAL_TZ=UTC+8. Previous iteration apps (home, workflow, pos, more) carried over unchanged — not retested.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "shadow* style props", "issue": "Carry-over RN-web warning: shadowColor/shadowOffset/shadowOpacity/shadowRadius should migrate to boxShadow. Non-blocking."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration10.py",
+    "/app/test_reports/pytest/iteration10_results.xml"
+  ],
+  "action_items": [
+    "The seed booking id '6ac8658274e1ec8cc057de09' mentioned in the review context was not present on the preview DB (likely cleaned by a prior cancel). Tester created a replacement booking 'TagihKlienSeed' (2026-10-08 10:00 Couple Session, DP 100k of 250k), ran all flows end-to-end, then cancelled it — no leftover test data. No main-agent fix needed.",
+    "Optional (long-standing): migrate RN shadow* -> boxShadow for react-native-web console cleanliness."
+  ],
+  "critical_code_review_comments": [
+    "server.py mark_balance_requested is implemented minimally (sets balance_requested_at/by, 404 on no match, no audit log). That's acceptable given it's a non-destructive flag; consider adding an audit log entry for traceability so super admin can see who re-sent the Tagih Pelunasan WA and when.",
+    "unpaid_finished query correctly excludes lunas via $ne, and 'date<today OR (date==today AND end_time<=now)' is evaluated server-side with LOCAL_TZ (WITA) — no client-side timezone drift possible.",
+    "late_today uses now_local_min() + late_tolerance_min to determine 'absent' which correctly re-uses WITA. Status enum ('late'|'absent') is stable for frontend badge coloring.",
+    "home.tsx collapses when a user taps an individual card only if items.length>1 (onPress conditional) — nice touch to prevent accidental collapse when only one offender exists.",
+    "frontend studio(t) helper applies +8h to any ISO timestamp so hhmm()/dmyhm() output stays WITA independent of device TZ — verified visually (backend created at UTC 04:00 displays 12:00).",
+    "wa-balance-button in /booking/[id].tsx conditionally renders 'Tagih Pelunasan' vs 'Tagih Ulang' purely from presence of balance_requested_at — no local state staleness after reload."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration10.py (new)",
+    "/app/test_reports/pytest/iteration10_results.xml (generated)",
+    "/app/test_reports/iteration_10.json (new)"
+  ],
+  "success_rate": {"backend": "100% (9/9 pytest)", "frontend": "100% (late-folder expand/collapse, unpaid card, WA mark-billed + persistence, booking detail Tagih Ulang + balance-billed-text, WITA time rendering all verified)"},
+  "test_credentials": "Super Admin 123456, Admin 1 111111, Admin 2 222222, Rina (Fotografer) 333333 (reset during this iteration — the preview DB had a different PIN; tester restored it via PUT /api/users/{id}), Budi (Editor) 444444",
+  "seed_data_creation": "Created and then cancelled: booking 'TagihKlienSeed' 2026-10-08 10:00 Couple Session (DP 100.000 of 250.000, id 6ac866ae797a9e07806e0cde). No remaining TEST or TagihKlienSeed data in DB.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The context-provided seed booking id 6ac8658274e1ec8cc057de09 is NOT present; create your own via POST /api/bookings as admin with past date (compute_slots does not reject historical dates, only online /public/bookings does), add a DP payment, test, then cancel. Rina PIN was found to be a non-333333 value on this preview — I reset it to 333333 via PUT /api/users/6ac860e2bc056ec9b52d1449 as super admin. All five seed users exist with ids listed in /api/auth/users. The Expo web PIN pad does NOT use role='button'; the keys are reachable via data-testid='pin-key-{digit}' or text selector get_by_text('{digit}', exact=True). WA buttons open api.whatsapp.com/send in a new tab/page — handle via page.context.expect_page().",
+  "rca_of_issue": "N/A — all three new features behave as spec'd end-to-end."
+}

@@ -73,3 +73,9 @@ User choices: PIN login, IDR, record-only payments (cash/transfer/card/QRIS), cl
 - GET /api/bookings/unpaid-finished: confirmed bookings whose session ended (WIB +7, same as existing logic) and not yet lunas
 - Home "Tagih Pelunasan" list with one-tap WhatsApp balance request (admin presses send); booking detail "Tagih Pelunasan Rp X" button
 - No online payment (user cancelled); payments remain record-only
+
+## Iteration: Late folder, Mark Billed, WITA (2026-06)
+- Home: >1 late/absent staff collapsed into one "folder" line (tap to expand/collapse)
+- POST /api/bookings/{id}/balance-requested stores balance_requested_at/by; Home + booking detail show "Sudah ditagih …", button becomes "Tagih Ulang"
+- Timezone switched to WITA (UTC+8): backend LOCAL_TZ, frontend today()/hhmm()/dmyhm() independent of device TZ
+- Tested iteration_10: backend 9/9, frontend all flows pass
