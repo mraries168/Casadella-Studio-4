@@ -43,7 +43,16 @@ export function DailyTasks({ data, setData, reload }: { data: any; setData: (d: 
       <ErrorText text={err} />
 
       {(data.tasks || []).length > 0 && <SectionTitle>Checklist Harian</SectionTitle>}
-      {(data.tasks || []).map((t: any) => (
+      {(data.tasks || []).map((t: any) => t.target === 0 ? (
+        <View key={t.template_id} style={s.row} testID={`task-${t.template_id}`}>
+          <Ionicons name="infinite-outline" size={26} color={colors.brandSecondary} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.title}>{t.title}</Text>
+            <Text style={s.meta} testID={`task-count-${t.template_id}`}>{t.count} booking diinput hari ini · tanpa batas, boleh 0</Text>
+            {t.auto === "booking" && <Text style={s.auto} testID={`task-auto-${t.template_id}`}>Otomatis +1 setiap booking baru dibuat</Text>}
+          </View>
+        </View>
+      ) : (
         <View key={t.template_id} style={[s.row, t.done && s.rowDone]} testID={`task-${t.template_id}`}>
           <Ionicons name={t.done ? "checkmark-circle" : "ellipse-outline"} size={26} color={t.done ? colors.success : colors.borderStrong} />
           <View style={{ flex: 1 }}>

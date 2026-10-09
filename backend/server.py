@@ -1511,8 +1511,9 @@ async def checklist_today(u=Depends(current_user)):
     d = local_date()
     tasks = await tasks_for(str(u["_id"]), task_role(u["sub_role"]), d)
     jobs = await jobs_for(u, d)
-    done = sum(1 for t in tasks if t["done"]) + sum(1 for j in jobs if j["done"])
-    return {"date": d, "tasks": tasks, "jobs": jobs, "completed": done, "total": len(tasks) + len(jobs)}
+    req = [t for t in tasks if t["target"] > 0]
+    done = sum(1 for t in req if t["done"]) + sum(1 for j in jobs if j["done"])
+    return {"date": d, "tasks": tasks, "jobs": jobs, "completed": done, "total": len(req) + len(jobs)}
 
 
 async def bump_task(u, tid: str, complete: bool, auto: bool = False):
@@ -1563,7 +1564,8 @@ async def checklist_report(date: str, _=Depends(ADMIN)):
     for u in users:
         tasks = await tasks_for(str(u["_id"]), task_role(u["sub_role"]), date)
         jobs = [j for j in await jobs_for(u, date) if j["done"] and j["done_date"] == date or not j["done"] and (j["due"] or "9999") <= date]
-        items = [{"title": f"{t['title']} ({t['count']}/min {t['target']})", "done": t["done"]} for t in tasks]
+        items = [{"title": f"{t['title']} ({t['count']}/min {t['target']})", "done": t["done"]} for t in tasks if t["target"] > 0]
+        items += [{"title": f"{t['title']} ({t['count']} · tanpa batas)", "done": True} for t in tasks if t["target"] == 0 and t["count"]]
         items += [{"title": f"{'Foto' if j['kind'] == 'photo' else 'Edit'}: {j['client_name']} · {j['package_name']}"
                             + (" (lewat deadline)" if j["overdue"] else ""), "done": j["done"]} for j in jobs]
         completed = sum(1 for i in items if i["done"])
@@ -1596,7 +1598,7 @@ async def late_today(_=Depends(ADMIN)):
     return {"work_start": st["work_start"], "items": out}
 
 
-DEFAULT_TASKS = [("Input booking harian", 1), ("Follow up klien", 10), ("Siapkan konten broadcast", 1), ("Kirim broadcast", 1)]
+DEFAULT_TASKS = [("Input booking harian", 0), ("Follow up klien", 10), ("Siapkan konten broadcast", 1), ("Kirim broadcast", 1)]
 
 
 # ---------- seed ----------
@@ -1606,6 +1608,7 @@ async def seed_tasks():
         await db.task_templates.insert_many([{"title": t, "role": "admin", "target": n, "active": True, "order": i, "created_at": now_iso()}
                                              for i, (t, n) in enumerate(DEFAULT_TASKS)])
     await db.task_templates.update_many({"title": "Input booking harian", "role": "admin", "auto": {"$exists": False}}, {"$set": {"auto": "booking"}})
+    await db.task_templates.update_many({"auto": "booking"}, {"$set": {"target": 0}})
 
 
 @app.on_event("startup")

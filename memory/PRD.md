@@ -87,3 +87,11 @@ User choices: PIN login, IDR, record-only payments (cash/transfer/card/QRIS), cl
 ## Iteration: Auto count bookings (2026-06)
 - Template "Input booking harian" flagged auto="booking" (startup migration); POST /api/bookings by an admin auto +1 that admin's task for today; manual +1 disabled (400) for auto tasks
 - Not counted: Super Admin bookings, online-booking approvals; cancelling does not decrement
+
+## Iteration: Manual client database (2026-06)
+- New `clients` collection (key = normalized phone or name slug); POST /api/clients & PUT /api/clients/{key} (Admin + Super Admin); overlays booking-derived clients; 409 on duplicate
+- Editing name/phone propagates to all that client's bookings; audit entity "client" (+ Klien filter in Riwayat Perubahan)
+- UI: "Tambah" in Database Klien, /client-form (name, WA, Instagram, alamat, catatan), edit button on client detail, profile card
+
+## Iteration: Unlimited booking input task (2026-06)
+- "Input booking harian" target = 0 (startup migration): unlimited, 0 is fine; excluded from Tugas Hari Ini progress & not counted as pending in Laporan Checklist (shown as "N · tanpa batas" when >0)
