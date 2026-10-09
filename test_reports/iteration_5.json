@@ -1,0 +1,41 @@
+{
+  "summary": "Fresh GitHub import smoke-tested end-to-end. BACKEND: 58/58 pytest pass against public URL. Covered: auth/users list, PIN login (999999/111111/222222/333333/444444 after seed with SEED_SUPERADMIN_PIN=999999), auth/me, users CRUD & permissions (super-only), settings read/write, packages CRUD (admin), slots engine + overlap, bookings create/edit/cancel (cancel deletes transactions), payments DP->Pelunasan auto POS income + payment_status, transactions POS income/expense + daily/monthly/yearly reports with turnover/dp_total/pelunasan_total/net_profit, attendance clock-in/out and /attendance/monthly recap, payroll calculations (meal allowance x days + overtime pay + turnover bonus %), clients grouping+search+detail+export PDF/XLSX, bookings/{id}/invoice PDF, payroll/{uid}/payslip PDF (super-only), reports/packages popularity, upload+file retrieval. FRONTEND (390x844 mobile viewport, Expo web preview): Login screen renders CASADELLA logo, name picker with sub_role badge, 6-digit PIN pad. Super Admin login succeeds -> Home shows Absensi card (Absen Masuk/Pulang), RINGKASAN KASIR HARI INI (Omzet/Pengeluaran/Laba Bersih), Booking Baru + Pengeluaran shortcuts, Jadwal Hari Ini. Tabs Beranda/Jadwal/Kasir/Lainnya all present (4/4). Jadwal shows month strip + day details; Kasir shows Harian/Bulanan/Tahunan with DP/Pelunasan/Pemasukan Lain/Biaya Operasional/Sewa + 'Catat Pengeluaran' + 'Transaksi' FAB. Lainnya for Super Admin exposes Paket Foto, Database Klien, Absensi Staf, Staf & PIN, Hak Akses, Penggajian, Pengaturan Sistem. Full booking flow verified: filled name/phone, picked Self Photo Basic (Rp 75.000), date 10 Oktober 2026, slot 15:30 -> navigated to booking detail with Konfirmasi/Pengingat/WA Invoice/Invoice PDF buttons, Catat Pembayaran, Ubah/Batalkan. Staff Rina (333333, photographer) login: tabs Beranda/Jadwal/Lainnya (NO Kasir, 0/4) with 'Akses hanya-lihat' badge; clock-in worked (Masuk 17:18); Lainnya restricted to Paket Foto + Absensi Staf (no Staf & PIN/Hak Akses/Penggajian/Database Klien/Pengaturan Sistem). All role-based UI and backend permission enforcement match PRD. One minor non-blocker: console emits a deprecation warning 'shadow* style props are deprecated. Use boxShadow.' from one or more RN components - cosmetic only.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "shadow* style props", "issue": "Console deprecation warning: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' - appears on login screen. Not blocking, but should migrate shadowColor/shadowOffset/shadowOpacity/shadowRadius to boxShadow (or keep platform-specific) across src/components to silence RN web warning."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iteration3.py",
+    "/app/backend/tests/test_iteration4.py",
+    "/app/test_reports/pytest/iteration5_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Replace deprecated shadow* RN style props with boxShadow / Platform.select for RN web to silence console warning."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py: /api/clients and /api/clients/export iterate full bookings collection in memory on every call (db.bookings.find().to_list(50000)); add caching or an index-backed pipeline before scale.",
+    "backend/server.py `norm_phone` only prefixes '62' when number starts with '0'; '812…' (no leading 0 or 62) does not merge with '0812…'/'62812…'. Low likelihood but worth normalising when first digit is 8 and length 9-11.",
+    "backend/server.py `build_clients` uses booking.price (not paid_total) for total_spent — abandoned bookings inflate it. Comment the intent or switch to paid_total if business wants realised revenue.",
+    "backend/server.py uses `transactions.date` as Asia/Jakarta local date (local_date()) while bookings.date is a client-supplied ISO date — reports compare across different calendars at UTC boundaries; document assumption in README to avoid off-by-one bugs.",
+    "backend/server.py `requests` HTTP calls to Emergent object storage run inside the asyncio loop (wrapped in run_in_threadpool — OK) but share a module-global `storage_key` with no lock; concurrent uploads during 503 refresh could race. Guard with asyncio.Lock() or a cached_property-style init."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iteration3.py",
+    "/app/backend/tests/test_iteration4.py",
+    "/app/test_reports/iteration_5.json",
+    "/app/test_reports/pytest/iteration5_results.xml"
+  ],
+  "success_rate": {"backend": "100% (58/58)", "frontend": "100% of smoke flows (login, tabs, booking create, staff role gating, attendance)"},
+  "seed_data_creation": "Super Admin created 2 TEST_UIBooking entries during UI exploration; both deleted via /api/bookings/{id}/cancel. backend_test.py creates TEST_* bookings and cleans them up in its teardown. Rina's clock-in record for today was created during live UI test and left in DB (expected - part of attendance smoke).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Fresh import environment seeds Super Admin PIN from SEED_SUPERADMIN_PIN env var (currently 999999). Tests previously used 123456 — updated to 999999 in backend_test.py / test_iteration3.py / test_iteration4.py. Also normalised date helpers to Asia/Jakarta (UTC+7) via `_wib_today()` / updated `today()` so test queries line up with backend `local_date()` for transactions (prevents off-by-one when UTC date differs from WIB date, e.g. after 17:00 UTC). Public URL: https://casadella-studio.preview.emergentagent.com. Users in this env: Super Admin, Admin 1, Admin 2, Rina (Fotografer), Budi (Editor). To run: cd /app/backend/tests && EXPO_PUBLIC_BACKEND_URL=https://casadella-studio.preview.emergentagent.com pytest -q (uses -n 2 by pytest.ini).",
+  "rca_of_issue": "N/A — import smoke passed. Pre-fix: 3/58 tests failed due to (1) hard-coded Super Admin PIN 123456 vs seeded 999999 and (2) today-in-UTC vs transaction.date-in-WIB mismatch. Fix: updated PIN constant and switched today helpers to UTC+7. No application code changed."
+}

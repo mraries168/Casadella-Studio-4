@@ -1,0 +1,23 @@
+{
+  "summary": "Iteration 2 testing of new role gating + cancel-cascade requirements. Backend: 22/22 pytest cases pass including the newly added TestPOS.test_admin_cannot_delete_tx (admin→403 on DELETE /api/transactions/{id}), TestPOS.test_staff_cannot_read_tx_or_report (staff→403 on GET /api/transactions and /api/reports), TestPOS.test_super_admin_can_delete_tx_cleanup (super→200), TestBookingsAndPayments.test_cancel_booking now asserts booking removed from DB (GET→404), and TestBookingsAndPayments.test_cancel_deletes_transactions_and_updates_report confirms cancel removes booking + associated transactions (deleted_transactions>=1) and daily revenue drops by the DP amount. Frontend (390x844 mobile): (1) Login screen shows hint 'PIN diatur oleh Super Admin. Lupa PIN? Hubungi Super Admin.' (2) Staff Rina (333333) has no [data-testid=tab-pos] and home does NOT render RINGKASAN KASIR section. (3) Admin 1 (111111) home shows RINGKASAN KASIR (home-revenue/home-net); created booking from home-new-booking-button, recorded DP via add-payment-button+payment-save-button, tapped cancel-booking-button then cancel-booking-confirm → navigated back to /home, Omzet decreased from Rp 120.000 to Rp 100.000 (-20.000 == DP). Admin Kasir list has 0 tx-delete-* icons (role-gated correctly). (4) Super Admin (123456) Kasir list exposes tx-delete-<id>; tapping it reveals tx-delete-confirm-<id>; confirming deletes the row and Omzet drops Rp 100.000 → Rp 0 with transaction count going 1→0.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py cancel_booking hard-deletes the booking which is irreversible; consider soft-delete (status='cancelled') + still cascading tx removal, so a historical audit trail remains while meeting the 'remove from reports' requirement.",
+    "/api/attendance still allows staff but /api/transactions and /api/reports now require ADMIN — role matrix is consistent with new spec and tested."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py", "/app/test_reports/iteration_2.json", "/app/test_reports/pytest/pytest_results.xml"],
+  "success_rate": {"backend": "100% (22/22)", "frontend": "100% of requested flows (PIN hint, staff hiding, admin create+DP+cancel+revenue decrement, super admin tx delete)"},
+  "seed_data_creation": "No persistent seed. Tests clean up TEST_* transactions and users; booking created in test is cancelled at the end. One Ratna booking leftover on today's date from the admin-cancel UI test (non-blocking; can be cleared manually).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login: tap [data-testid=login-user-<id>] then 6 presses of [data-testid=login-key-<digit>] auto-submits. To force a different user, run page.evaluate('()=>{localStorage.clear();sessionStorage.clear();}') then reload. EXPO_PUBLIC_BACKEND_URL=https://photo-studio-control.preview.emergentagent.com. Super Admin PIN comes from SEED_SUPERADMIN_PIN (currently 123456). Key testIDs: tab-pos, home-revenue, home-net, home-new-booking-button, booking-client-name-input, booking-package-<id>, slot-<HH:MM>, booking-save-button, add-payment-button, payment-amount-input, payment-save-button, cancel-booking-button, cancel-booking-confirm, cancel-booking-abort, tx-delete-<id>, tx-delete-confirm-<id>.",
+  "rca_of_issue": "N/A – all iteration-2 requirements implemented correctly on backend and frontend. Verified against spec: (a) staff 403 on /api/reports and /api/transactions GET (ADMIN dependency applied), (b) POST /api/bookings/{id}/cancel now does delete_many on booking + its transactions returning {ok:true, deleted_transactions:N}, (c) DELETE /api/transactions/{id} gated by SUPER (admin→403, super→200), (d) UI respects isAdmin for tab-pos & RINGKASAN KASIR, (e) tx-delete icons rendered only for super_admin, (f) login hint text present."
+}

@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 7 — FRONTEND-ONLY verification of Casadella internal app (Expo web preview @ 390x844). Super Admin PIN reset to 123456 confirmed. All 10 feature groups from review request PASS end-to-end: (1) Super Admin login with PIN 123456 works (name picker is horizontal ScrollView; Super Admin card lives at the end, scrolled into view via scrollIntoView+inline:center then PIN keypad). (2) Lainnya tab shows all four labels — Absensi Staff, Staff & PIN, Link Booking Online, Riwayat Perubahan; testIDs menu-online-booking and menu-audit confirmed. (3) /online-booking shows link https://casadella-studio.preview.emergentagent.com/api/book (testID online-booking-link), Salin/Buka/WhatsApp buttons (online-booking-share-button, online-booking-open-button, online-booking-wa-button), pending list rendered. (4) Public booking creation via POST /api/public/bookings (slot payload uses {time,end,available}) succeeds -> Home scrolls to section 'BOOKING ONLINE MENUNGGU KONFIRMASI (N)' with pending-{id} card (confirmed via screenshot — inner_text misses the uppercased SectionTitle due to letterSpacing styling but the DOM element and testID are present). (5) Booking detail /booking/{id} shows approve-booking-button & reject-booking-button; Setujui transitions to Terkonfirmasi + 'Catat Pembayaran (DP / Pelunasan)' appears. (6) add-payment-button opens payment sheet with payment-type-dp, payment-amount-input, payment-method-cash, payment-submit-button — submitting DP (30% of package) makes admin-invoice-button visible and shows payment-row-0. (7) /audit shows filter chips audit-filter-all / booking / payment / package (all clickable) and entries list actor names ('oleh Super Admin', 'oleh Admin 1', 'oleh Klien (online)'). (8) /settings has all required fields — settings-admin-wa='6287786098669', settings-geofence Segmented, settings-studio-lat/lng, settings-radius, settings-rent-auto Segmented, settings-rent-amount='2500000'; settings-save-button shows 'Pengaturan tersimpan'; PIN section: mismatch -> 'Konfirmasi PIN tidak sama'; change to 654321 -> 'PIN Super Admin berhasil diubah'; re-login with 654321 -> /home; restore to 123456 -> final login with 123456 -> /home. (9) /payroll shows 4 employee cards (payroll-{user_id}); tapping opens bottom sheet with payroll-base-input, payroll-days-input, payroll-meal-input, payroll-pct-input, payroll-misc-input, payroll-ot-input, payroll-kasbon-input, payroll-denda-input, payroll-note-input, payroll-save-button, payslip-pdf-button, payslip-wa-button; kasbon 50000 saved -> card now shows 'Potongan Kasbon -Rp 50.000' and Total reduced to -Rp 50.000 (Admin 1 has 0 hari kerja base, so total = -kasbon as expected). (10) Home attendance card shows 'Wajib di studio · radius 100 m' and tapping clock-in-button does not crash (shows graceful location permission flow). Cleanup: all TEST_* bookings cancelled via /api/bookings/{id}/cancel (HTTP 200). No red screen, no react-native errors beyond pre-existing shadow* deprecation warning.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "home.tsx SectionTitle 'BOOKING ONLINE MENUNGGU KONFIRMASI'", "issues": ["Rendered uppercase with letterSpacing — Playwright inner_text can miss substring matches; visual rendering is correct. Not a bug but worth knowing for future tests: match by testID^='pending-' or by SectionTitle component instead of raw text."]}
+    ],
+    "react_native_issues": [
+      {"component": "shadow* style props", "issue": "Pre-existing deprecation warning carried over from iteration 5/6. Migrate shadowColor/shadowOffset/shadowOpacity/shadowRadius to boxShadow or Platform.select for react-native-web."}
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_7.json",
+    "/app/backend/tests/test_iteration6.py"
+  ],
+  "action_items": [
+    "Optional UX: show '0 booking menunggu' empty state on Home when pending list is empty (currently section hides entirely — fine, but inconsistent with /online-booking which always shows the Empty component).",
+    "Optional DX: expose SectionTitle text as data-testid-friendly (e.g., wrap in <Text accessibilityLabel>) so headless scraping of body.innerText works for uppercased titles.",
+    "Optional: migrate deprecated RN shadow* style props -> boxShadow for react-native-web."
+  ],
+  "critical_code_review_comments": [
+    "SettingsIn in /app/backend/server.py still requires studio_name (noted in iter 6). Frontend settings.tsx sends full body so this is safe today; keep in mind for any future partial-update flow.",
+    "online-booking.tsx builds LINK from process.env.EXPO_PUBLIC_BACKEND_URL at module scope — fine on web but may be stale on hot reload; consider Constants.expoConfig?.extra for native builds.",
+    "settings.tsx PIN section calls PUT /users/{me.id} with pin:pin.a — persisted hash is validated on next login (tested OK). No audit entry is written for PIN self-change; consider adding one for traceability."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_7.json"
+  ],
+  "success_rate": {"backend": "n/a (frontend-only pass; backend endpoints hit indirectly through UI: /api/auth/users, /api/auth/login, /api/public/info, /api/public/slots, /api/public/bookings, /api/bookings?status=pending, /api/bookings/{id}/approve, /api/payments, /api/settings PUT, /api/users PUT, /api/audit, /api/payroll PUT, /api/bookings/{id}/cancel — all returned 200/expected)", "frontend": "100% (10/10 feature groups verified end-to-end on 390x844 mobile viewport)"},
+  "seed_data_creation": "Created 3 TEST_UI* pending bookings via /api/public/bookings during the run; all cancelled at end (HTTP 200). Payroll override for Admin 1 current month: kasbon=50000 persisted (left in DB intentionally per typical payroll override lifecycle). PIN was flipped to 654321 and restored to 123456.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public URL: https://casadella-studio.preview.emergentagent.com. Super Admin PIN is 123456 (restored). Super Admin card is the LAST entry in the login name picker (horizontal ScrollView) — use el.scrollIntoView({inline:'center'}) before clicking, or query '[data-testid=login-user-{super_id}]' directly. Public slot payload uses {time,end,available} NOT {start_time,end_time}. Booking detail testIDs: approve-booking-button, reject-booking-button, add-payment-button (opens sheet), payment-type-dp, payment-amount-input, payment-method-cash, payment-submit-button, admin-invoice-button (appears after first payment). Payroll card testID is payroll-{user_id} (not payroll-card-{id}); sheet opens on card tap with payroll-save-button. Settings PIN: settings-pin-new + settings-pin-confirm + settings-pin-save-button. Cleanup pattern: GET /api/bookings?status=pending with super token -> POST /api/bookings/{id}/cancel for each TEST_* client_name (HTTP 200).",
+  "rca_of_issue": "N/A — no bugs found. Previous iter-6 selector difficulty on login (CASADELLA letter-split logo + off-screen Super Admin card) is fully resolved by using scrollIntoView on login-user-{super_id} testID; the pending section 'inner_text didn't contain string' was a Playwright/text-extraction artifact (letterSpacing+uppercase on SectionTitle), not a UI bug — the DOM renders correctly and the pending-{id} testID is clickable."
+}

@@ -1,0 +1,165 @@
+{
+  "app_name": "CASADELLA Photo Studio",
+  "personality": "1 iOS-Native Clean",
+  "personality_one_liner": "A highly readable, professional, and function-first interface that lets the studio's schedule, bookings, and financial data remain the visual hero.",
+  "color": {
+    "surface": "#FFFFFF",
+    "onSurface": "#111827",
+    "surfaceSecondary": "#F3F4F6",
+    "onSurfaceSecondary": "#374151",
+    "surfaceTertiary": "#E5E7EB",
+    "onSurfaceTertiary": "#4B5563",
+    "surfaceInverse": "#111827",
+    "onSurfaceInverse": "#F9FAFB",
+    "brand": "#0B3D66",
+    "onBrand": "#FFFFFF",
+    "brandPrimary": "#0B3D66",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#2A8BC4",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#E6F0F9",
+    "onBrandTertiary": "#0B3D66",
+    "success": "#10B981",
+    "onSuccess": "#FFFFFF",
+    "warning": "#F59E0B",
+    "onWarning": "#FFFFFF",
+    "error": "#EF4444",
+    "onError": "#FFFFFF",
+    "info": "#3B82F6",
+    "onInfo": "#FFFFFF",
+    "border": "#E5E7EB",
+    "borderStrong": "#D1D5DB",
+    "divider": "#F3F4F6",
+    "muted": "#6B7280"
+  },
+  "typography": {
+    "displayFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "Plus Jakarta Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Use generous padding around content. Ensure lists and POS rows have comfortable vertical rhythm. Do not cramp touch targets.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Ionicons",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Apply to bottom tab bar when content scrolls behind.",
+      "Apply to sticky headers on the Booking Calendar and POS screen.",
+      "Use over the hero studio image on the PIN login screen."
+    ],
+    "dont's": [
+      "Never apply to form inputs or list rows.",
+      "Do not use on dense numerical POS report cards."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "PIN Login",
+      "purpose": "Secure entry for staff and admins using a custom numpad.",
+      "states": {
+        "loading": "Centered spinner over the numpad.",
+        "empty": "N/A",
+        "error": "Shake animation on PIN dots, red error text 'PIN Salah'."
+      },
+      "layout": "Full-bleed background photo of the photo studio (dark scrim) with CASADELLA logo. Custom 3x4 numpad pinned to the bottom 1/2 of the screen. Display 4-6 empty dots for PIN entry."
+    },
+    {
+      "name": "Dashboard & POS Summary",
+      "purpose": "Overview of today's schedule, quick actions, and daily POS income/expense for admins.",
+      "states": {
+        "loading": "Skeleton cards for financial summaries and schedule list.",
+        "empty": "Illustration of empty calendar with 'Belum ada jadwal hari ini'.",
+        "error": "Inline error banner 'Gagal memuat data' with retry button."
+      },
+      "layout": "Sticky header (glass). Top section: POS Summary (Income, Expense, Turnover) in a horizontal scroll or 2-col grid. Middle section: Quick Actions (Clock-in/out, New Booking). Bottom section: Stacked list of today's upcoming bookings. Bottom tabs for navigation."
+    },
+    {
+      "name": "Booking Calendar",
+      "purpose": "Manage time slots (09:00-20:00) and assign packages.",
+      "states": {
+        "loading": "Skeleton rows for time slots.",
+        "empty": "Empty state illustration on dates with zero bookings.",
+        "error": "Toast or banner for failed slot loading."
+      },
+      "layout": "Top sticky date picker (horizontal scroll of days). Segmented control to toggle between Schedule View and List View. Main content: Vertical list of 15-min intervals. Booked slots appear as colored tiles (brandTertiary) taking up proportional height based on package duration. Bottom sheet for creating a new booking (selecting package -> auto-adjusts duration)."
+    },
+    {
+      "name": "Package Selection & Payment",
+      "purpose": "Select photo packages and manage DP (Deposit) / Pelunasan (Balance).",
+      "states": {
+        "loading": "Skeleton list of packages.",
+        "empty": "N/A",
+        "error": "Error loading package details."
+      },
+      "layout": "Stacked list organizing packages. Sticky primary CTA 'Lanjut ke Pembayaran' fixed at the bottom. Payment screen uses a bottom sheet to enter DP amount, calculating remaining balance. IDR currency formatting mandatory."
+    },
+    {
+      "name": "Admin Reports & Settings",
+      "purpose": "View daily/monthly/yearly income, manage staff, and system settings.",
+      "states": {
+        "loading": "Centered spinner.",
+        "empty": "No data for selected period.",
+        "error": "Error fetching reports."
+      },
+      "layout": "Segmented controls for Daily/Monthly/Yearly. Large metric cards for Net Income (Revenue - Expenses). Stacked list for staff roles/attendance tracking. Settings rows with tinted icon containers (brandTertiary squares)."
+    }
+  ],
+  "images": {
+    "hero_studio_bg": {
+      "url": "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBwaG90byUyMHN0dWRpbyUyMGludGVyaW9yfGVufDB8fHx8MTc5MTQzODAzMXww&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBwaG90byUyMHN0dWRpbyUyMGludGVyaW9yfGVufDB8fHx8MTc5MTQzODAzMXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Modern Photo Studio Setup"
+    }
+  },
+  "haptics": {
+    "button_press": "light",
+    "tab_change": "light",
+    "pin_key_press": "light",
+    "pin_error": "heavy",
+    "booking_success": "success"
+  },
+  "instructions_to_main_agent": [
+    "Language MUST be Bahasa Indonesia across the entire app (e.g., 'Uang Muka/DP', 'Pelunasan', 'Jadwal', 'Laporan').",
+    "Currency formatting MUST use IDR (Rp) for all POS and payment views.",
+    "Implement Role-Based Access Control logic: Staff (Read-only), Admin 1/2 (Edit bookings/payments), Super Admin (Settings/Manage Staff). Mock this context.",
+    "Time slots must be dynamically generated from 09:00 to 20:00 in 15-minute intervals. Package selections should block out appropriate intervals automatically.",
+    "Design the Logo text 'CASADELLA Photo Studio' using a gradient from #0B3D66 to #2A8BC4 if transparent PNG is not available (since image fetch for logo failed). Use an Ionicons 'aperture' or 'camera-outline' icon to represent the shutter mark.",
+    "Apply 'iOS-Native Clean' principles: high readability, no muddy colors, native spring animations, and a white/navy palette.",
+    "Ensure 'Sticky Primary CTA' pattern is used on scrollable pages like Package Selection and Checkout.",
+    "Any time text overlays the hero_studio_bg image (like on the Login screen), apply a vertical top-to-bottom gradient scrim (transparent to surfaceInverse) to guarantee WCAG contrast."
+  ]
+}

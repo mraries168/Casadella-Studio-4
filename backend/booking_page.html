@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Booking Online · Casadella Photo Studio</title>
+<style>
+  :root { --navy:#0B3D66; --blue:#1E7FC2; --tint:#E6F0F8; --border:#E2E8F0; --muted:#64748B; --text:#0F172A; --err:#C62828; --ok:#1B7F4B; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; background:#F5F8FB; color:var(--text); }
+  header { background:#fff; border-bottom:1px solid var(--border); padding:20px 16px 16px; text-align:center; }
+  header img { width:200px; max-width:70%; }
+  header p { margin:6px 0 0; color:var(--muted); font-size:14px; }
+  main { max-width:560px; margin:0 auto; padding:16px 16px 48px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:24px 0 8px; }
+  .card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:8px; cursor:pointer; transition:border-color .15s, transform .1s; }
+  .card:active { transform:scale(.99); }
+  .card.sel { border-color:var(--navy); box-shadow:0 0 0 2px var(--navy) inset; }
+  .row { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+  .pname { font-weight:800; font-size:16px; }
+  .price { font-weight:800; color:var(--navy); white-space:nowrap; }
+  .desc { color:var(--muted); font-size:13px; margin-top:4px; }
+  input, textarea { width:100%; min-height:48px; border:1px solid var(--border); border-radius:10px; padding:12px; font-size:16px; background:#fff; font-family:inherit; }
+  label { display:block; font-size:13px; font-weight:600; margin:12px 0 6px; color:#334155; }
+  .slots { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .slot { height:44px; border-radius:10px; border:1px solid var(--border); background:#fff; font-weight:700; font-size:14px; color:var(--text); cursor:pointer; }
+  .slot[disabled] { opacity:.3; cursor:not-allowed; text-decoration:line-through; }
+  .slot.sel { background:var(--navy); color:#fff; border-color:var(--navy); }
+  button.primary { width:100%; height:52px; border:0; border-radius:12px; background:var(--navy); color:#fff; font-size:16px; font-weight:700; margin-top:20px; cursor:pointer; }
+  button.primary[disabled] { opacity:.45; }
+  .err { color:var(--err); font-weight:600; font-size:14px; margin-top:12px; }
+  .hint { color:var(--muted); font-size:13px; }
+  .done { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; text-align:center; margin-top:24px; }
+  .done .ic { width:64px; height:64px; border-radius:32px; background:var(--tint); color:var(--navy); display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 12px; }
+  .sum { background:var(--navy); color:#fff; border-radius:12px; padding:14px 16px; margin-top:16px; font-size:14px; line-height:1.6; }
+</style>
+</head>
+<body>
+<header>
+  <img src="/api/public/logo" alt="Casadella Photo Studio" />
+  <p id="studio">Booking sesi foto online</p>
+</header>
+<main id="app">
+  <div id="form">
+    <h2>1. Pilih Paket</h2>
+    <div id="packages" data-testid="public-packages"><p class="hint">Memuat paket…</p></div>
+
+    <h2>2. Pilih Tanggal & Jam</h2>
+    <input type="date" id="date" data-testid="public-date-input" />
+    <div style="height:12px"></div>
+    <div id="slots" class="slots" data-testid="public-slots"></div>
+    <p id="slotHint" class="hint">Pilih paket dan tanggal untuk melihat jam yang tersedia.</p>
+
+    <h2>3. Data Anda</h2>
+    <label for="name">Nama lengkap</label>
+    <input id="name" data-testid="public-name-input" placeholder="cth. Maria Lopes" maxlength="80" />
+    <label for="phone">No. WhatsApp</label>
+    <input id="phone" data-testid="public-phone-input" inputmode="tel" placeholder="cth. 081234567890" maxlength="20" />
+    <label for="notes">Catatan (opsional)</label>
+    <textarea id="notes" data-testid="public-notes-input" rows="2" maxlength="300" placeholder="Jumlah orang, konsep, dll."></textarea>
+
+    <div id="summary"></div>
+    <div id="err" class="err" data-testid="public-error"></div>
+    <button class="primary" id="submit" data-testid="public-submit-button" disabled>Kirim Booking</button>
+    <p class="hint" style="text-align:center;margin-top:10px">Booking akan dikonfirmasi oleh admin studio melalui WhatsApp.</p>
+  </div>
+</main>
+<script>
+  const API = window.location.origin + "/api/public";
+  const rp = (n) => "Rp " + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const DAYS = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+  const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const longDate = (s) => { const [y,m,d] = s.split("-").map(Number); const dt = new Date(y, m-1, d); return `${DAYS[dt.getDay()]}, ${d} ${MONTHS[m-1]} ${y}`; };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const st = { pkg: null, date: "", time: null, packages: [] };
+  const $ = (id) => document.getElementById(id);
+
+  function render() {
+    $("packages").innerHTML = st.packages.map((p) => `
+      <div class="card ${st.pkg && st.pkg.id === p.id ? "sel" : ""}" data-id="${p.id}" data-testid="public-package-${p.id}">
+        <div class="row"><div class="pname">${esc(p.name)}</div><div class="price">${rp(p.price)}</div></div>
+        <div class="desc">${p.duration_min} menit${p.description ? " · " + esc(p.description) : ""}</div>
+      </div>`).join("") || '<p class="hint">Belum ada paket tersedia.</p>';
+    document.querySelectorAll("#packages .card").forEach((el) => el.onclick = () => {
+      st.pkg = st.packages.find((p) => p.id === el.dataset.id); st.time = null; render(); loadSlots();
+    });
+    const ok = st.pkg && st.date && st.time && $("name").value.trim().length >= 2 && $("phone").value.replace(/\D/g, "").length >= 8;
+    $("submit").disabled = !ok;
+    $("summary").innerHTML = st.pkg && st.date && st.time
+      ? `<div class="sum" data-testid="public-summary"><b>${esc(st.pkg.name)}</b><br>${longDate(st.date)} · ${st.time}<br>Total ${rp(st.pkg.price)}</div>` : "";
+  }
+
+  async function loadSlots() {
+    const box = $("slots");
+    box.innerHTML = "";
+    if (!st.pkg || !st.date) { $("slotHint").textContent = "Pilih paket dan tanggal untuk melihat jam yang tersedia."; return; }
+    $("slotHint").textContent = "Memuat jam…";
+    try {
+      const r = await fetch(`${API}/slots?date=${st.date}&package_id=${st.pkg.id}`);
+      const slots = await r.json();
+      const avail = slots.filter((s) => s.available).length;
+      $("slotHint").textContent = avail ? `${avail} jam tersedia · durasi ${st.pkg.duration_min} menit` : "Tidak ada jam tersedia pada tanggal ini.";
+      box.innerHTML = slots.map((s) => `<button class="slot ${st.time === s.time ? "sel" : ""}" data-t="${s.time}" data-testid="public-slot-${s.time.replace(":", "")}" ${s.available ? "" : "disabled"}>${s.time}</button>`).join("");
+      box.querySelectorAll(".slot").forEach((b) => b.onclick = () => { st.time = b.dataset.t; loadSlots(); render(); });
+    } catch (e) { $("slotHint").textContent = "Gagal memuat jam, coba lagi."; }
+  }
+
+  async function init() {
+    try {
+      const r = await fetch(`${API}/info`);
+      const info = await r.json();
+      st.packages = info.packages;
+      $("studio").textContent = `${info.studio_name} · Buka ${info.open_time}–${info.close_time}`;
+      $("date").min = info.today;
+      $("date").value = info.today;
+      st.date = info.today;
+      render();
+    } catch (e) { $("packages").innerHTML = '<p class="err">Gagal memuat data studio.</p>'; }
+  }
+
+  $("date").onchange = (e) => { st.date = e.target.value; st.time = null; render(); loadSlots(); };
+  $("name").oninput = render;
+  $("phone").oninput = render;
+  $("submit").onclick = async () => {
+    $("err").textContent = "";
+    $("submit").disabled = true;
+    $("submit").textContent = "Mengirim…";
+    try {
+      const r = await fetch(`${API}/bookings`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        client_name: $("name").value.trim(), client_phone: $("phone").value.trim(), date: st.date, start_time: st.time,
+        package_id: st.pkg.id, notes: $("notes").value.trim() }) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Data belum lengkap");
+      $("app").innerHTML = `<div class="done" data-testid="public-success">
+        <div class="ic">✓</div>
+        <h3 style="margin:0 0 6px">Booking terkirim!</h3>
+        <p class="hint">Terima kasih, ${esc(data.client_name)}. Booking Anda sedang <b>menunggu konfirmasi</b> admin. Kami akan menghubungi Anda via WhatsApp.</p>
+        <div class="sum" style="text-align:left"><b>${esc(data.package_name)}</b><br>${longDate(data.date)} · ${data.start_time}–${data.end_time}<br>Total ${rp(data.price)}</div>
+        <button class="primary" onclick="location.reload()" data-testid="public-book-again">Booking Lagi</button></div>`;
+    } catch (e) {
+      $("err").textContent = e.message;
+      $("submit").textContent = "Kirim Booking";
+      render();
+      loadSlots();
+    }
+  };
+  init().then(loadSlots);
+</script>
+</body>
+</html>

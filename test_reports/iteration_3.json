@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 3 (receipts upload, PDF/XLSX export, WhatsApp buttons, per-user permissions, extended reports, monthly attendance recap, payroll, extended settings) tested end-to-end. BACKEND: 43/43 pytest pass — 22 regression + 21 new in test_iteration3.py covering: (a) default permissions (super=all true, admin=all true, staff=all false) returned by /auth/login & /auth/me; (b) PUT /api/users/{id}/permissions super-only (admin→403), toggling Admin 2 expense off then POST /api/transactions type=expense→403 while income still 200; staff Rina toggled booking=true can POST /api/bookings (200) but still gets /api/reports→403; (c) /api/reports returns new fields turnover, income, dp_total, pelunasan_total, net_profit, operational, rental, by_category, transaction_count, booking_count — turnover ≥ today's booking price, dp_total ≥ DP amount, net_profit = income − expenses; (d) GET /api/reports/export?format=pdf returns 200 application/pdf with %PDF magic bytes using Bearer header; format=xlsx returns 200 spreadsheetml with PK zip header using ?token= query auth; staff without reports perm→403; (e) POST /api/upload: staff (no expense)→403, admin uploads PNG→200 {path}, GET /api/files/{path} works for admin via header AND via ?token= query, staff (no reports)→403, unknown path→404; expense tx POST with receipt_path persists it; (f) GET /api/attendance/monthly admin→200 with rows [{user_id,name,days_worked,late_count,late_minutes,overtime_minutes,overtime_pay}], staff→403; (g) GET /api/payroll admin→403, super→200 with meal_allowance_per_day=25000 and meal_allowance=days_worked*25000 for every row; PUT /api/payroll/{uid}?month persists base/pct/misc/override and GET returns saved=true with overtime_pay=override, turnover_bonus=round(turnover*pct/100), total=sum of components; (h) PUT /api/settings super-only with new fields work_start/work_end/late_tolerance_min/overtime_min_minutes/overtime_rate_per_hour/meal_allowance_per_day. FRONTEND (390x844): Super Admin login → More menu exposes [menu-access] + [menu-payroll]; Access screen renders [access-booking-*] toggles for 4 non-super users; Attendance screen has segment [attendance-mode] with Harian/Rekap Bulanan and renders 4 [recap-*] cards; Payroll grand total 25.000 → 550.000 after editing a card and tapping [payroll-save-button] (then restored to 0); Kasir shows [report-turnover] [report-revenue] [report-dp] [report-pelunasan] [report-expenses] [report-net-income] [export-pdf-button] [export-xlsx-button]; export-pdf-button tap works without crash; /transaction?type=expense on WEB shows [tx-receipt-gallery] and HIDES [tx-receipt-camera] (count=0) as expected; booking detail shows [wa-confirm-button] and [wa-receipt-button]. Staff Rina (defaults) sees NO [menu-access], NO [menu-payroll], NO [tab-pos]. Permissions restored to defaults for all users at the end.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iteration3.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/pytest/iteration3_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py uses a mutable module-level `storage_key` and reinitialises on 503 only once per call-chain. If the key expires during a concurrent request the retry window is small — consider wrapping in asyncio.Lock to avoid thundering herd of /objstore/init.",
+    "/api/payroll iterates DB.payroll.find per missing-row inside a loop (one query per user when no entry exists this month) — fine at current scale but worth batching with $in once staff count grows.",
+    "`/api/upload` echoes the client-provided Content-Type to object storage without validation. Enforce an allow-list (image/jpeg, image/png, image/webp) to prevent uploading arbitrary binaries.",
+    "`build_report` includes DP/pelunasan in `income` (good) but turnover sums bdocs regardless of payment state, so a booking created today with no payment still inflates omzet — this matches the spec (‘booking prices of bookings dated in period’) but worth double-checking with product because an abandoned booking will skew Laba Bersih via net_profit = income − expenses (which does not use turnover). Current behaviour is self-consistent."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3.py",
+    "/app/test_reports/iteration_3.json",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/pytest/iteration3_results.xml"
+  ],
+  "success_rate": {"backend": "100% (43/43)", "frontend": "100% of iteration-3 flows verified"},
+  "seed_data_creation": "No persistent seed. All TEST_* bookings/transactions cleaned up by pytest. Admin 2 and staff permissions were toggled during tests and have been explicitly restored to defaults (admins all true, staff all false) via /api/users/{id}/permissions.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login flow: localStorage.clear() → goto / → page.get_by_text('Super Admin').click() (or any user name) → press [data-testid=login-key-<d>] for each of 6 PIN digits (auto-submits). PINs: Super 123456, Admin 1 111111, Admin 2 222222, Rina 333333, Budi 444444. Backend tests: `pytest /app/backend/tests -v`. BASE URL: EXPO_PUBLIC_BACKEND_URL from frontend/.env. Key new testIDs: menu-access, menu-payroll, access-user-<id>, access-booking-<id>, access-expense-<id>, access-reports-<id>, payroll-summary, payroll-grand-total, payroll-<uid>, payroll-total-<uid>, payroll-sheet, payroll-base-input, payroll-pct-input, payroll-misc-input, payroll-ot-input, payroll-save-button, attendance-mode, recap-<uid>, report-turnover, report-revenue, report-dp, report-pelunasan, report-expenses, report-net-income, export-pdf-button, export-xlsx-button, tx-receipt-gallery, tx-receipt-camera (hidden on web), tx-receipt-preview, wa-confirm-button, wa-receipt-button, tx-receipt-<id>, receipt-sheet, receipt-image.",
+  "rca_of_issue": "N/A — all iteration-3 requirements implemented and verified. Permissions enforcement is in `need()`/`eff_perms()`; defaults for admin role resolve to true when `permissions` map absent. POST /transactions switches between booking/expense perm by `body.type`. /files has reports perm + dual auth (Bearer header or ?token= query via `current_user`). PDF/XLSX built with reportlab/openpyxl in a thread-pool; monthly export appends an attendance sheet. Payroll calc uses `attendance_recap(month)` for overtime base and `build_report('monthly',…)` for turnover bonus; meal_allowance = days_worked × settings.meal_allowance_per_day."
+}

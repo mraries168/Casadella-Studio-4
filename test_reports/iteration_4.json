@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 4 (payslip PDF+WA, booking reminders, derived clients database, invoice PDF+WA, package popularity) tested end-to-end. BACKEND: 58/58 pytest pass (22 regression in backend_test.py + 21 iteration-3 in test_iteration3.py + 15 new iteration-4 in test_iteration4.py). New tests cover: (a) PUT /api/users/{id} persists phone (verified via GET /api/users); (b) /api/clients grouping: two bookings with phones 081000111222 and 6281000111222 merge into ONE client (total_bookings=2, same key); different phones remain separate; next_booking set for future-only, last_visit set for past; (c) search filter ?q= works; GET /api/clients/{key} returns bookings[] + favorite_package; staff Rina (no booking, no reports perm) -> 403; (d) /api/clients/export?format=pdf returns application/pdf with %PDF magic bytes; format=xlsx returns spreadsheetml with PK zip header; (e) GET /api/bookings/{id}/invoice returns valid PDF (admin), 404 for non-existent id; (f) GET /api/payroll/{uid}/payslip?month admin -> 403 (super-only), super -> valid PDF; (g) GET /api/reports/packages?period=monthly&date returns [{package_name,count,revenue,share}] with shares summing ~100; staff -> 403. FRONTEND (390x844): Super Admin login verified: Home shows RINGKASAN KASIR + JADWAL HARI INI; More menu exposes [menu-clients][menu-payroll][menu-users][menu-access]; /clients shows [clients-search-input][clients-export-pdf][clients-export-xlsx] and [client-<key>] cards; client detail renders [client-summary][client-total-spent] hero + [client-booking-<id>] rows with [client-invoice-wa-<id>] WA buttons; booking detail now has [wa-confirm-button][wa-reminder-button][wa-receipt-button][invoice-pdf-button] (all count=1); Kasir shows [package-popularity] 'Paket Terlaris' section; Payroll sheet shows [payslip-pdf-button] and [payslip-wa-button]; Users sheet renders [user-phone-input] 'No. WhatsApp (untuk slip gaji)' with phone-pad keyboard. Staff Fotografer (Fariz, default perms all=false) correctly sees NO [menu-clients]/[menu-payroll]/[menu-access]; direct /clients navigation shows 'Anda tidak memiliki akses ke database klien' lock screen. Reminder section 'Pengingat Sesi Besok' did not render on current preview data (no booking scheduled for tomorrow — code at home.tsx:111 iterates `tomorrow` list conditionally; verified source renders [reminder-wa-<id>] when list non-empty). All TEST_ bookings created during pytest cleaned up via /bookings/{id}/cancel; permissions and phone for Fotografer restored to defaults.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iteration3.py",
+    "/app/backend/tests/test_iteration4.py",
+    "/app/test_reports/pytest/iteration4_results.xml",
+    "/app/test_reports/pytest/all_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py `norm_phone` collapses to '628...' only when input starts with '0'. International numbers already in '+62…' form (user types '+628…') pass through re.sub(r'\\D','') -> '628…' which matches canonical form, OK. But phones like '812…' (no leading 0 or 62) stay as '812…' and will NOT merge with '0812…' or '62812…'. Low likelihood but worth normalising when len==9-11 and leading digit is '8'.",
+    "/api/clients iterates all bookings in memory on EVERY request (`db.bookings.find().to_list(50000)`). Fine at current scale but will degrade; add a simple cache keyed by last booking updated_at or paginate.",
+    "`build_clients` sets `last_visit`/`last_package` on every booking where `date <= today` without comparing dates, so the sort by date asc + overwrite leaves the latest past booking as last_visit (correct). But `total_spent` uses `b['price']`, not `paid_total` — a cancelled-and-re-created flow with abandoned bookings could inflate it. Code comment should clarify intent.",
+    "booking/[id].tsx line 65 passes `b.client_phone` to openWhatsApp without trimming; if phone is empty the helper throws 'Nomor WhatsApp belum diisi' (confirmed in flow). Consider showing error inline per-button rather than general ErrorText below cards for better affordance.",
+    "/api/bookings/{bid}/invoice does not check `payment_status` — invoices for cancelled bookings currently 404 (because cancel deletes booking). But a 'belum_bayar' invoice still prints — this matches the spec but UX may want a 'DRAFT' watermark."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iteration3.py",
+    "/app/backend/tests/test_iteration4.py",
+    "/app/test_reports/iteration_4.json",
+    "/app/test_reports/pytest/iteration4_results.xml",
+    "/app/test_reports/pytest/all_results.xml"
+  ],
+  "success_rate": {"backend": "100% (58/58)", "frontend": "100% of iteration-4 flows verified"},
+  "seed_data_creation": "During test run TEST_SamePerson, TEST_OtherGuy, TEST_MergeMe, TEST_Invoice bookings created. ALL cleaned up via /api/bookings/{id}/cancel at module teardown. Permissions and phone values restored to defaults (admins all true, staff all false, Fotografer phone restored to original empty). Verified via GET /api/bookings and GET /api/users — no leftover TEST_* bookings.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "User display names in this preview are now 'Super Admin', 'Admin 1 - Prily', 'Admin 2 - Defhy', 'Fotografer - Fariz', 'Editor - Kenzo'. backend_test.py and test_iteration3.py were updated to look up users by sub_role (super_admin/admin1/admin2/photographer/editor) and expose both the actual display name and legacy alias ('Admin 1', 'Rina (Fotografer)' etc.) as fixture keys. Login flow: name selection uses partial match (page.get_by_text('Fotografer', exact=False) etc.) — do NOT hardcode 'Rina' or 'Budi'. PINs unchanged: 123456/111111/222222/333333/444444. Backend tests: pytest /app/backend/tests -v (uses pytest.ini addopts -n 2 --dist loadscope, ~85s). New iteration-4 testIDs: menu-clients, clients-search-input, clients-export-pdf, clients-export-xlsx, client-<key>, client-summary, client-total-spent, client-booking-<id>, client-invoice-wa-<id>, wa-reminder-button, invoice-pdf-button, reminder-wa-<id> (home, only if a booking exists tomorrow), package-popularity, payslip-pdf-button, payslip-wa-button, user-phone-input.",
+  "rca_of_issue": "N/A — all iteration-4 requirements implemented and verified. Client grouping normalises phone via norm_phone (strip non-digits; prefix '62' when starts with '0'), falls back to normalised name. Permissions enforced via client_viewer dep (booking OR reports perm). Payslip reuses /api/payroll row data + reportlab table (super-only). Invoice PDF builds info/items/pays/summ blocks. /api/reports/packages aggregates in-memory by package_name with share rounded to int."
+}
