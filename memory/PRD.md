@@ -79,3 +79,7 @@ User choices: PIN login, IDR, record-only payments (cash/transfer/card/QRIS), cl
 - POST /api/bookings/{id}/balance-requested stores balance_requested_at/by; Home + booking detail show "Sudah ditagih …", button becomes "Tagih Ulang"
 - Timezone switched to WITA (UTC+8): backend LOCAL_TZ, frontend today()/hhmm()/dmyhm() independent of device TZ
 - Tested iteration_10: backend 9/9, frontend all flows pass
+
+## Iteration: Checklist minimum targets (2026-06)
+- Daily task targets are now MINIMUMS: every task uses +1 and keeps counting after the target (e.g. Input booking = per client, Follow up klien min 10, can exceed)
+- Checklist report shows count/min target; task template labels updated

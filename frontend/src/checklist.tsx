@@ -48,13 +48,11 @@ export function DailyTasks({ data, setData, reload }: { data: any; setData: (d: 
           <Ionicons name={t.done ? "checkmark-circle" : "ellipse-outline"} size={26} color={t.done ? colors.success : colors.borderStrong} />
           <View style={{ flex: 1 }}>
             <Text style={[s.title, t.done && s.titleDone]}>{t.title}</Text>
-            {t.target > 1 && <Text style={s.meta} testID={`task-count-${t.template_id}`}>{t.count}/{t.target}{t.done ? "" : " · selesai otomatis saat target tercapai"}</Text>}
+            <Text style={s.meta} testID={`task-count-${t.template_id}`}>
+              {t.done ? `${t.count} tercatat · target min. ${t.target} tercapai` : `${t.count}/${t.target} · minimal ${t.target}, boleh lebih`}
+            </Text>
           </View>
-          {!t.done && (t.target > 1 ? (
-            <Button testID={`task-increment-${t.template_id}`} title="+1" variant="secondary" style={s.smallBtn} loading={busy === t.template_id} disabled={!!busy} onPress={() => run(t.template_id, `/checklist/${t.template_id}/increment`)} />
-          ) : (
-            <Button testID={`task-complete-${t.template_id}`} title="Selesai" style={s.smallBtn} loading={busy === t.template_id} disabled={!!busy} onPress={() => run(t.template_id, `/checklist/${t.template_id}/complete`)} />
-          ))}
+          <Button testID={`task-increment-${t.template_id}`} title="+1" variant={t.done ? "secondary" : "primary"} style={s.smallBtn} loading={busy === t.template_id} disabled={!!busy} onPress={() => run(t.template_id, `/checklist/${t.template_id}/increment`)} />
         </View>
       ))}
 

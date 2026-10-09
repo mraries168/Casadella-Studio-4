@@ -54,7 +54,7 @@ export default function TaskTemplates() {
         <Text style={s.hint}>
           {role === "photographer" ? "Pekerjaan foto otomatis dibuat saat booking diterima. Tambahkan tugas rutin lain di sini." :
             role === "editor" ? "Pekerjaan edit otomatis dibuat saat fotografer menekan Selesai (deadline 3 hari kerja). Tambahkan tugas rutin lain di sini." :
-              "Tugas dengan target > 1 memakai tombol +1 dan selesai otomatis saat target tercapai."}
+              "Setiap tugas memakai tombol +1. Target adalah jumlah minimal per hari dan boleh dilampaui (mis. input booking sesuai jumlah klien, follow up minimal 10 klien)."}
         </Text>
         {!data && (error ? <ErrorText text={error} /> : <Loading />)}
         {data && list.length === 0 && <Empty icon="list-outline" text="Belum ada tugas untuk peran ini" />}
@@ -62,7 +62,7 @@ export default function TaskTemplates() {
           <View key={t.id} style={s.row} testID={`template-${t.id}`}>
             <View style={{ flex: 1 }}>
               <Text style={s.title}>{t.title}</Text>
-              <Text style={s.meta}>{t.target > 1 ? `Target ${t.target}x per hari` : "Sekali per hari"}</Text>
+              <Text style={s.meta}>Minimal {t.target}x per hari, boleh lebih</Text>
             </View>
             {confirm === t.id ? (
               <View style={{ flexDirection: "row", gap: space.sm }}>
@@ -78,7 +78,7 @@ export default function TaskTemplates() {
         ))}
         <SectionTitle>Tambah Tugas</SectionTitle>
         <Field testID="template-title-input" label="Nama Tugas" value={title} onChangeText={setTitle} placeholder="mis. Rapikan studio" />
-        <Field testID="template-target-input" label="Target per hari" keyboardType="number-pad" value={target} onChangeText={(v) => setTarget(v.replace(/\D/g, ""))} />
+        <Field testID="template-target-input" label="Target minimal per hari" keyboardType="number-pad" value={target} onChangeText={(v) => setTarget(v.replace(/\D/g, ""))} />
         <ErrorText text={err} />
         <Button testID="template-add-button" title="Tambah Tugas" icon="add-circle-outline" loading={busy} disabled={title.trim().length < 2} onPress={add} />
       </ScrollView>

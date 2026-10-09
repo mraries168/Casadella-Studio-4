@@ -1466,15 +1466,18 @@ async def bump_task(u, tid: str, complete: bool):
         raise HTTPException(404, "Tugas tidak ditemukan")
     d, uid = local_date(), str(u["_id"])
     lg = await db.task_logs.find_one({"user_id": uid, "date": d, "template_id": tid}) or {}
-    if lg.get("done"):
+    if complete and lg.get("done"):
         raise HTTPException(400, "Tugas sudah selesai")
-    count = t["target"] if complete else lg.get("count", 0) + 1
+    count = max(t["target"], lg.get("count", 0)) if complete else lg.get("count", 0) + 1
     if complete and t["target"] > 1:
         raise HTTPException(400, f"Tugas ini selesai otomatis setelah {t['target']} kali")
     done = count >= t["target"]
-    await db.task_logs.update_one({"user_id": uid, "date": d, "template_id": tid},
-                                  {"$set": {"count": count, "done": done, "done_at": now_iso() if done else None, "name": u["name"]}},
-                                  upsert=True)
+    upd = {"count": count, "done": done, "name": u["name"]}
+    if done and not lg.get("done"):
+        upd["done_at"] = now_iso()
+    elif not done:
+        upd["done_at"] = None
+    await db.task_logs.update_one({"user_id": uid, "date": d, "template_id": tid}, {"$set": upd}, upsert=True)
     return await checklist_today(u)
 
 
@@ -1495,7 +1498,7 @@ async def checklist_report(date: str, _=Depends(ADMIN)):
     for u in users:
         tasks = await tasks_for(str(u["_id"]), task_role(u["sub_role"]), date)
         jobs = [j for j in await jobs_for(u, date) if j["done"] and j["done_date"] == date or not j["done"] and (j["due"] or "9999") <= date]
-        items = [{"title": t["title"] + (f" ({t['count']}/{t['target']})" if t["target"] > 1 else ""), "done": t["done"]} for t in tasks]
+        items = [{"title": f"{t['title']} ({t['count']}/min {t['target']})", "done": t["done"]} for t in tasks]
         items += [{"title": f"{'Foto' if j['kind'] == 'photo' else 'Edit'}: {j['client_name']} · {j['package_name']}"
                             + (" (lewat deadline)" if j["overdue"] else ""), "done": j["done"]} for j in jobs]
         completed = sum(1 for i in items if i["done"])
