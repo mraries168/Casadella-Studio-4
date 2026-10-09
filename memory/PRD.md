@@ -95,3 +95,7 @@ User choices: PIN login, IDR, record-only payments (cash/transfer/card/QRIS), cl
 
 ## Iteration: Unlimited booking input task (2026-06)
 - "Input booking harian" target = 0 (startup migration): unlimited, 0 is fine; excluded from Tugas Hari Ini progress & not counted as pending in Laporan Checklist (shown as "N · tanpa batas" when >0)
+
+## Iteration: Pick saved client in booking form (2026-06)
+- Booking form (new): typing ≥2 chars of name or ≥3 digits of number shows up to 5 saved clients; tap fills name + WA
+- Client detail: "Buat Booking untuk Klien Ini" opens booking form prefilled (?name=&phone=)

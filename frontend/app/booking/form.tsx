@@ -11,11 +11,13 @@ export default function BookingForm() {
   const s = useStyles();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { id, date: d0 } = useLocalSearchParams<{ id?: string; date?: string }>();
+  const { id, date: d0, name: n0, phone: p0 } = useLocalSearchParams<{ id?: string; date?: string; name?: string; phone?: string }>();
   const pkgs = useFetch<any[]>("/packages");
   const photographers = useFetch<any[]>("/users?sub_role=photographer");
   const editors = useFetch<any[]>("/users?sub_role=editor");
-  const [f, setF] = useState({ client_name: "", client_phone: "", date: d0 || today(), start_time: "", package_id: "", photographer_id: "", editor_id: "", notes: "" });
+  const clients = useFetch<any[]>(id ? null : "/clients");
+  const [f, setF] = useState({ client_name: n0 || "", client_phone: p0 || "", date: d0 || today(), start_time: "", package_id: "", photographer_id: "", editor_id: "", notes: "" });
+  const [picked, setPicked] = useState(!!n0);
   const [slots, setSlots] = useState<any[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -58,7 +60,9 @@ export default function BookingForm() {
       <Header back title={id ? "Ubah Booking" : "Booking Baru"} />
       <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingVertical: space.lg, gap: space.lg }}>
         <View style={s.pad}>
-          <Field testID="booking-client-name-input" label="Nama Klien" value={f.client_name} onChangeText={(v) => set("client_name", v)} placeholder="cth. Siti Rahma" />
+          <Field testID="booking-client-name-input" label="Nama Klien" value={f.client_name} onChangeText={(v) => { set("client_name", v); setPicked(false); }} placeholder="Ketik nama/nomor untuk cari klien tersimpan" />
+          {!id && !picked && <ClientSuggestions q={f.client_name} list={clients.data} onPick={(c) => { setF((p) => ({ ...p, client_name: c.name, client_phone: c.phone || "" })); setPicked(true); }} />}
+          {picked && <Text style={s.hint} testID="booking-client-picked">Klien tersimpan dipilih · nama & nomor terisi otomatis</Text>}
           <Field testID="booking-client-phone-input" label="No. WhatsApp" value={f.client_phone} onChangeText={(v) => set("client_phone", v)} keyboardType="phone-pad" placeholder="08xxxxxxxxxx" />
         </View>
 
@@ -133,7 +137,28 @@ export default function BookingForm() {
   );
 }
 
+function ClientSuggestions({ q, list, onPick }: { q: string; list?: any[] | null; onPick: (c: any) => void }) {
+  const s = useStyles();
+  const ql = q.trim().toLowerCase();
+  if (ql.length < 2 || !list) return null;
+  const digits = ql.replace(/\D/g, "");
+  const hits = list.filter((c) => c.name.toLowerCase().includes(ql) || (digits.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(digits))).slice(0, 5);
+  if (hits.length === 0) return null;
+  return (
+    <View style={s.sugBox} testID="booking-client-suggestions">
+      {hits.map((c) => (
+        <Pressable key={c.key} testID={`booking-client-suggestion-${c.key}`} onPress={() => onPick(c)} style={s.sug}>
+          <Text style={s.pkgName}>{c.name}</Text>
+          <Text style={s.pkgMeta}>{c.phone || "Tanpa nomor"}{c.total_bookings ? ` · ${c.total_bookings}x booking` : " · klien baru"}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 const useStyles = makeStyles((c) => ({
+  sugBox: { borderWidth: 1, borderColor: c.border, borderRadius: radius.md, overflow: "hidden", marginTop: -space.sm },
+  sug: { paddingHorizontal: space.md, paddingVertical: space.sm, borderBottomWidth: 1, borderBottomColor: c.border, backgroundColor: c.surfaceSecondary },
   root: { flex: 1, backgroundColor: c.surface },
   pad: { paddingHorizontal: space.lg, gap: space.md },
   pkg: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: c.border },

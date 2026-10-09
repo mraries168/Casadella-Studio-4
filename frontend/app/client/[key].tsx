@@ -7,7 +7,7 @@ import { longDate, openWhatsApp, PAY_STATUS, rp, useFetch } from "@/src/api";
 import { invoiceText } from "@/src/wa";
 import { useAuth } from "@/src/auth";
 import { makeStyles, useTheme, radius, space } from "@/src/theme";
-import { Badge, Card, ErrorText, Header, Loading, SectionTitle } from "@/src/ui";
+import { Badge, Button, Card, ErrorText, Header, Loading, SectionTitle } from "@/src/ui";
 
 export default function ClientDetail() {
   const s = useStyles();
@@ -15,7 +15,7 @@ export default function ClientDetail() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { key } = useLocalSearchParams<{ key: string }>();
-  const { isAdmin } = useAuth();
+  const { isAdmin, can } = useAuth();
   const { data: c, error } = useFetch<any>(`/clients/${encodeURIComponent(String(key))}`);
   const settings = useFetch<any>("/settings");
   const [err, setErr] = useState<string | null>(null);
@@ -55,6 +55,10 @@ export default function ClientDetail() {
           </Card>
         )}
         <ErrorText text={err} />
+        {can("booking") && (
+          <Button testID="client-new-booking-button" title="Buat Booking untuk Klien Ini" icon="add-circle-outline"
+            onPress={() => router.push(`/booking/form?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone || "")}`)} />
+        )}
         <SectionTitle>Riwayat Booking</SectionTitle>
         {c.bookings.length === 0 && <Text style={s.meta} testID="client-no-bookings">Belum ada booking untuk klien ini.</Text>}
         {c.bookings.map((b: any) => (
